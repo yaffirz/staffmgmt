@@ -1,8 +1,12 @@
 import '../models/app_notification.dart';
 import '../models/bulk_result.dart';
+import '../models/cluster.dart';
 import '../models/directory.dart';
 import '../models/employee.dart';
 import '../models/form_field_config.dart';
+import '../models/staff_note.dart';
+import '../models/staff_page.dart';
+import '../models/staff_search_result.dart';
 import '../models/store_staff.dart';
 import '../models/user_account.dart';
 import 'api_client.dart';
@@ -248,6 +252,107 @@ class StaffService {
     final data = await _api.get('/api/v1/stores/$storeId/staff')
         as Map<String, dynamic>;
     return StoreStaff.fromJson(data);
+  }
+
+  // ---- Area Manager cluster (Phase 2b) -----------------------------------
+
+  /// The calling Area Manager's cluster: stores in their brands + staff.
+  Future<List<ClusterStore>> cluster() async {
+    final data = await _api.get('/api/v1/cluster') as Map<String, dynamic>;
+    return ((data['stores'] as List?) ?? const [])
+        .map((e) => ClusterStore.fromJson(e as Map<String, dynamic>))
+        .toList(growable: false);
+  }
+
+  /// Move a staffer's primary store to another store in the AM's cluster.
+  Future<void> moveStaff(int employeeId, int toStoreId) async {
+    await _api.post(
+      '/api/v1/cluster/employees/$employeeId/move',
+      {'to_store_id': toStoreId},
+    );
+  }
+
+  /// Search all staff by name (to request one into a store). Capped server-side.
+  Future<List<StaffSearchResult>> searchStaff(String name) async {
+    final data = await _api
+        .get('/api/v1/cluster/employees/search?name=${Uri.encodeQueryComponent(name)}')
+        as List;
+    return data
+        .map((e) => StaffSearchResult.fromJson(e as Map<String, dynamic>))
+        .toList(growable: false);
+  }
+
+  /// Queue a request to assign a staffer to one of the AM's stores.
+  Future<void> requestStaff(int employeeId, int storeId) async {
+    await _api.post(
+      '/api/v1/cluster/employees/$employeeId/request-assignment',
+      {'store_id': storeId},
+    );
+  }
+
+  // ---- App settings (admin toggles) --------------------------------------
+
+  Future<String> getSetting(String key) async {
+    final data = await _api.get('/api/v1/settings/$key') as Map<String, dynamic>;
+    return (data['value'] as String?) ?? '';
+  }
+
+  Future<String> updateSetting(String key, String value) async {
+    final data = await _api.patch('/api/v1/settings/$key', {'value': value})
+        as Map<String, dynamic>;
+    return (data['value'] as String?) ?? '';
+  }
+
+  // ---- Individual staff page + notes -------------------------------------
+
+  Future<StaffPageEmployee> staffPage(int employeeId) async {
+    final data =
+        await _api.get('/api/v1/staff/$employeeId') as Map<String, dynamic>;
+    return StaffPageEmployee.fromJson(data);
+  }
+
+  Future<List<StaffNote>> staffNotes(int employeeId) async {
+    final data = await _api.get('/api/v1/staff/$employeeId/notes') as List;
+    return data
+        .map((e) => StaffNote.fromJson(e as Map<String, dynamic>))
+        .toList(growable: false);
+  }
+
+  /// Every note visible to the caller across all staff (the "all notes" feed).
+  Future<List<StaffNote>> allStaffNotes() async {
+    final data = await _api.get('/api/v1/staff/notes/all') as List;
+    return data
+        .map((e) => StaffNote.fromJson(e as Map<String, dynamic>))
+        .toList(growable: false);
+  }
+
+  Future<StaffNote> createNote(
+    int employeeId, {
+    required String text,
+    List<String> roles = const [],
+    List<int> brandIds = const [],
+  }) async {
+    final data = await _api.post(
+      '/api/v1/staff/$employeeId/notes',
+      {
+        'note_text': text,
+        'visibility_roles': roles,
+        'visibility_brand_ids': brandIds,
+      },
+    ) as Map<String, dynamic>;
+    return StaffNote.fromJson(data);
+  }
+
+  Future<void> deleteNote(int noteId) async {
+    await _api.delete('/api/v1/staff/notes/$noteId');
+  }
+
+  /// The current user's own brands (Area Managers) — defaults the brand picker.
+  Future<List<Brand>> myBrands() async {
+    final data = await _api.get('/api/v1/auth/me/brands') as List;
+    return data
+        .map((e) => Brand.fromJson(e as Map<String, dynamic>))
+        .toList(growable: false);
   }
 
   Future<List<FormFieldConfig>> formConfig(String formKey) async {

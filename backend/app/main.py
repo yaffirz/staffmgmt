@@ -10,6 +10,7 @@ from app.api.routes import (
     employees,
     form_config,
     lookups,
+    notes,
     notifications,
     settings as settings_routes,
     stores,
@@ -54,6 +55,7 @@ app.include_router(cluster.router)
 app.include_router(settings_routes.router)
 app.include_router(notifications.router)
 app.include_router(stores.router)
+app.include_router(notes.router)
 
 
 @app.get("/health", tags=["meta"])

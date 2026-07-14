@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../models/store_staff.dart';
 import '../services/staff_service.dart';
 import '../widgets/app_scaffold.dart';
+import 'employee_detail_screen.dart';
 
 /// Shows the staff currently at a store. Reached by deep-link from a
 /// notification (e.g. "staff moved here"), which passes [highlightEmployeeId]
@@ -150,6 +151,14 @@ class _StoreDrilldownScreenState extends State<StoreDrilldownScreen> {
     return DataRow(
       color:
           highlighted ? WidgetStatePropertyAll(cs.primaryContainer) : null,
+      onSelectChanged: (_) => Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => EmployeeDetailScreen(
+            employeeId: m.employeeId,
+            employeeName: m.employeeName,
+          ),
+        ),
+      ),
       cells: [
         DataCell(SelectableText(
           m.employeeName,

@@ -7,6 +7,7 @@ import '../state/auth_provider.dart';
 import '../widgets/app_scaffold.dart';
 import 'new_hire_wizard_screen.dart';
 import 'bulk_upload_screen.dart';
+import 'employee_detail_screen.dart';
 
 class EmployeesListScreen extends StatefulWidget {
   const EmployeesListScreen({super.key});
@@ -37,6 +38,7 @@ class _EmployeesListScreenState extends State<EmployeesListScreen> {
       onEdit: _editEmployee,
       onDelete: _deleteEmployee,
       canDelete: _canEditMag,
+      onOpenNotes: _openNotes,
     );
     _load();
   }
@@ -186,6 +188,17 @@ class _EmployeesListScreenState extends State<EmployeesListScreen> {
     _load();
   }
 
+  void _openNotes(Employee e) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => EmployeeDetailScreen(
+          employeeId: e.employeeId,
+          employeeName: e.employeeName,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
@@ -325,6 +338,7 @@ class _EmployeeDataSource extends DataTableSource {
     required this.onEdit,
     required this.onDelete,
     required this.canDelete,
+    required this.onOpenNotes,
   });
 
   final Future<void> Function(Employee e, bool value) onToggle;
@@ -333,6 +347,7 @@ class _EmployeeDataSource extends DataTableSource {
   final void Function(Employee e) onEdit;
   final void Function(Employee e) onDelete;
   final bool canDelete;
+  final void Function(Employee e) onOpenNotes;
 
   bool showAdditional = false;
 
@@ -447,6 +462,11 @@ class _EmployeeDataSource extends DataTableSource {
       DataCell(Row(
         mainAxisSize: MainAxisSize.min,
         children: [
+          IconButton(
+            tooltip: 'Notes',
+            icon: const Icon(Icons.sticky_note_2_outlined, size: 18),
+            onPressed: () => onOpenNotes(e),
+          ),
           IconButton(
             tooltip: 'Edit',
             icon: const Icon(Icons.edit_outlined, size: 18),

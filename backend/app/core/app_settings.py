@@ -13,6 +13,8 @@ from app.models.models import AppSettings
 DEFAULTS: dict[str, str] = {
     # Standing-rule toggle: may an Area Manager move staff between their stores?
     "area_managers_can_move": "true",
+    # Standing-rule toggle: is the staff-notes feature enabled (writing notes)?
+    "staff_notes_enabled": "true",
 }
 
 

@@ -10,7 +10,10 @@ import '../widgets/theme_toggle.dart';
 import 'new_hire_wizard_screen.dart';
 import 'employees_hub_screen.dart';
 import 'form_settings_screen.dart';
+import 'all_notes_screen.dart';
 import 'brands_stores_hub_screen.dart';
+import 'my_cluster_screen.dart';
+import 'settings_screen.dart';
 import 'users_screen.dart';
 
 class DashboardScreen extends StatelessWidget {
@@ -119,6 +122,9 @@ class _DashboardBody extends StatelessWidget {
           _Module('Form Settings', Icons.tune,
               'Customise form fields',
               dest: _Dest.formSettings),
+          _Module('Settings', Icons.settings_outlined,
+              'Feature toggles',
+              dest: _Dest.settings),
         ];
       case 'HR':
         return const [
@@ -130,27 +136,41 @@ class _DashboardBody extends StatelessWidget {
           _Module('Status Changes', Icons.swap_vert_circle_outlined,
               'Promote, demote, terminate'),
           _Module('Staff Notes', Icons.sticky_note_2_outlined,
-              'Performance logs'),
+              'Performance logs',
+              dest: _Dest.allNotes),
         ];
       case 'Area Manager':
         return const [
           _Module('My Cluster', Icons.hub_outlined,
-              'Staff in your assigned stores'),
+              'Staff in your assigned stores',
+              dest: _Dest.myCluster),
           _Module('Cross-store Assignments', Icons.alt_route_outlined,
               'Add staff to other stores'),
           _Module('Staff Notes', Icons.sticky_note_2_outlined,
-              'Performance logs'),
+              'Performance logs',
+              dest: _Dest.allNotes),
         ];
       default:
         return const [
           _Module('Staff Notes', Icons.sticky_note_2_outlined,
-              'Performance logs'),
+              'Performance logs',
+              dest: _Dest.allNotes),
         ];
     }
   }
 }
 
-enum _Dest { none, wizard, hub, formSettings, brandsHub, users }
+enum _Dest {
+  none,
+  wizard,
+  hub,
+  formSettings,
+  brandsHub,
+  users,
+  myCluster,
+  settings,
+  allNotes
+}
 
 class _Module {
   final String title;
@@ -213,6 +233,27 @@ class _ModuleCard extends StatelessWidget {
                 Navigator.of(context).push(
                   MaterialPageRoute(
                     builder: (_) => const UsersScreen(),
+                  ),
+                );
+                break;
+              case _Dest.myCluster:
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const MyClusterScreen(),
+                  ),
+                );
+                break;
+              case _Dest.settings:
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const SettingsScreen(),
+                  ),
+                );
+                break;
+              case _Dest.allNotes:
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const AllNotesScreen(),
                   ),
                 );
                 break;

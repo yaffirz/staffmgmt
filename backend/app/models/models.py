@@ -1,7 +1,7 @@
 from datetime import date, datetime, timezone
 from typing import Optional
 
-from sqlalchemy import CheckConstraint, Column, UniqueConstraint
+from sqlalchemy import CheckConstraint, Column, UniqueConstraint, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlmodel import Field, SQLModel
 
@@ -153,6 +153,21 @@ class StaffNotes(SQLModel, table=True):
     author_user_id: int = Field(foreign_key="users.user_id")
     note_text: str
     created_at: datetime = Field(default_factory=utcnow)
+    # Per-note visibility. Empty both = private (author + Super Admin only).
+    # visibility_roles: role names that may view; visibility_brand_ids: brands
+    # whose Area Managers may view. Added via non-destructive migration.
+    visibility_roles: list = Field(
+        default_factory=list,
+        sa_column=Column(
+            JSONB, nullable=False, server_default=text("'[]'::jsonb")
+        ),
+    )
+    visibility_brand_ids: list = Field(
+        default_factory=list,
+        sa_column=Column(
+            JSONB, nullable=False, server_default=text("'[]'::jsonb")
+        ),
+    )
 
 
 class StaffStatusLog(SQLModel, table=True):
