@@ -1,0 +1,29 @@
+# --- Secrets / environment ---
+.env
+*.local.env
+# keep the template
+!.env.example
+
+# --- Python (backend) ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+
+# --- Flutter / Dart (staff_frontend, frontend) ---
+**/build/
+**/.dart_tool/
+**/.flutter-plugins
+**/.flutter-plugins-dependencies
+**/.packages
+**/generated_plugin_registrant.dart
+*.iml
+
+# --- OS / editor ---
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

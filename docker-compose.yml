@@ -1,0 +1,45 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: staffmgmt_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-staffadmin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-staffpass}
+      POSTGRES_DB: ${POSTGRES_DB:-staffmgmt}
+    ports:
+      # Exposed so you can inspect the DB from a tool like DBeaver/pgAdmin if you want.
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-staffadmin} -d ${POSTGRES_DB:-staffmgmt}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: staffmgmt_backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-staffadmin}:${POSTGRES_PASSWORD:-staffpass}@db:5432/${POSTGRES_DB:-staffmgmt}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-change-me-to-a-long-random-string}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-720}
+      SEED_ADMIN_USERNAME: ${SEED_ADMIN_USERNAME:-superadmin}
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-ChangeMe123!}
+      DEFAULT_TENANT_ID: ${DEFAULT_TENANT_ID:-1}
+    ports:
+      - "8000:8000"
+    # For local dev: live-reload when you edit code on the host.
+    volumes:
+      - ./backend/app:/code/app
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+volumes:
+  pgdata:
