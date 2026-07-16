@@ -1,14 +1,11 @@
-import 'dart:convert';
-// Web-only file download/upload via the browser. This screen targets Flutter
-// web; on a future native build these would be swapped for an OS file picker.
-import 'dart:html' as html;
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../models/bulk_result.dart';
 import '../services/api_client.dart';
+// Browser file download/upload on web; a no-op stub on native (Android/iOS).
+import '../services/bulk_io.dart' as bulk_io;
 import '../services/staff_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_scaffold.dart';
@@ -112,31 +109,14 @@ class _BulkUploadScreenState extends State<BulkUploadScreen> {
           ],
       };
 
-  void _downloadTemplate() {
-    final bytes = utf8.encode(_template);
-    final blob = html.Blob([bytes], 'text/csv');
-    final url = html.Url.createObjectUrlFromBlob(blob);
-    html.AnchorElement(href: url)
-      ..setAttribute('download', _fileName)
-      ..click();
-    html.Url.revokeObjectUrl(url);
-  }
+  void _downloadTemplate() => bulk_io.downloadCsv(_fileName, _template);
 
   Future<void> _pickFile() async {
-    final input = html.FileUploadInputElement()..accept = '.csv,text/csv';
-    input.click();
-    await input.onChange.first;
-    final files = input.files;
-    if (files == null || files.isEmpty) return;
-    final file = files.first;
-    final reader = html.FileReader();
-    reader.readAsText(file);
-    await reader.onLoad.first;
-    final text = (reader.result as String?) ?? '';
-    if (!mounted) return;
+    final picked = await bulk_io.pickCsvText();
+    if (picked == null || !mounted) return;
     setState(() {
-      _csvCtrl.text = text.trim();
-      _loadedFileName = file.name;
+      _csvCtrl.text = picked.text;
+      _loadedFileName = picked.name;
       _error = null;
       _result = null;
     });
@@ -254,11 +234,12 @@ class _BulkUploadScreenState extends State<BulkUploadScreen> {
                         spacing: 8,
                         runSpacing: 8,
                         children: [
-                          OutlinedButton.icon(
-                            onPressed: _downloadTemplate,
-                            icon: const Icon(Icons.download, size: 18),
-                            label: const Text('Download template'),
-                          ),
+                          if (bulk_io.bulkFileIoSupported)
+                            OutlinedButton.icon(
+                              onPressed: _downloadTemplate,
+                              icon: const Icon(Icons.download, size: 18),
+                              label: const Text('Download template'),
+                            ),
                           OutlinedButton.icon(
                             onPressed: () {
                               Clipboard.setData(
@@ -276,27 +257,29 @@ class _BulkUploadScreenState extends State<BulkUploadScreen> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 20),
-                // Upload row
-                Row(
-                  children: [
-                    OutlinedButton.icon(
-                      onPressed: _pickFile,
-                      icon: const Icon(Icons.attach_file, size: 18),
-                      label: const Text('Choose .csv file'),
-                    ),
-                    const SizedBox(width: 12),
-                    if (_loadedFileName != null)
-                      Expanded(
-                        child: Text(
-                          'Loaded: $_loadedFileName',
-                          style: TextStyle(
-                              fontSize: 13, color: cs.onSurfaceVariant),
-                          overflow: TextOverflow.ellipsis,
-                        ),
+                // Upload row (web only — native builds paste instead).
+                if (bulk_io.bulkFileIoSupported) ...[
+                  const SizedBox(height: 20),
+                  Row(
+                    children: [
+                      OutlinedButton.icon(
+                        onPressed: _pickFile,
+                        icon: const Icon(Icons.attach_file, size: 18),
+                        label: const Text('Choose .csv file'),
                       ),
-                  ],
-                ),
+                      const SizedBox(width: 12),
+                      if (_loadedFileName != null)
+                        Expanded(
+                          child: Text(
+                            'Loaded: $_loadedFileName',
+                            style: TextStyle(
+                                fontSize: 13, color: cs.onSurfaceVariant),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                    ],
+                  ),
+                ],
                 const SizedBox(height: 12),
                 TextField(
                   controller: _csvCtrl,
