@@ -1,4 +1,5 @@
 import '../models/app_notification.dart';
+import '../models/audit_log.dart';
 import '../models/bulk_result.dart';
 import '../models/cluster.dart';
 import '../models/directory.dart';
@@ -386,6 +387,18 @@ class StaffService {
     final data = await _api.get('/api/v1/staff/status/feed') as List;
     return data
         .map((e) => StatusLogEntry.fromJson(e as Map<String, dynamic>))
+        .toList(growable: false);
+  }
+
+  // ---- Admin mini-console (audit logs) -----------------------------------
+
+  Future<List<AuditLogEntry>> auditLogs({String? table}) async {
+    final path = table == null
+        ? '/api/v1/audit-logs'
+        : '/api/v1/audit-logs?table=${Uri.encodeQueryComponent(table)}';
+    final data = await _api.get(path) as List;
+    return data
+        .map((e) => AuditLogEntry.fromJson(e as Map<String, dynamic>))
         .toList(growable: false);
   }
 

@@ -11,6 +11,7 @@ import 'new_hire_wizard_screen.dart';
 import 'employees_hub_screen.dart';
 import 'form_settings_screen.dart';
 import 'all_notes_screen.dart';
+import 'audit_logs_screen.dart';
 import 'brands_stores_hub_screen.dart';
 import 'cross_store_screen.dart';
 import 'my_cluster_screen.dart';
@@ -133,7 +134,8 @@ class _DashboardBody extends StatelessWidget {
               'Promote, demote, terminate',
               dest: _Dest.statusFeed),
           _Module('Audit Logs', Icons.fact_check_outlined,
-              'Full change history'),
+              'Full change history',
+              dest: _Dest.auditLogs),
           _Module('Notifications', Icons.notifications_none,
               'Area Manager alerts'),
           _Module('Form Settings', Icons.tune,
@@ -198,7 +200,8 @@ enum _Dest {
   settings,
   allNotes,
   statusFeed,
-  crossStore
+  crossStore,
+  auditLogs
 }
 
 class _Module {
@@ -297,6 +300,13 @@ class _ModuleCard extends StatelessWidget {
                 Navigator.of(context).push(
                   MaterialPageRoute(
                     builder: (_) => const CrossStoreScreen(),
+                  ),
+                );
+                break;
+              case _Dest.auditLogs:
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const AuditLogsScreen(),
                   ),
                 );
                 break;

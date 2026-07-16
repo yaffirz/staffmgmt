@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlmodel import Session
 
 from app.api.routes import (
+    audit,
     auth,
     cluster,
     employees,
@@ -58,6 +59,7 @@ app.include_router(notifications.router)
 app.include_router(stores.router)
 app.include_router(notes.router)
 app.include_router(status_routes.router)
+app.include_router(audit.router)
 
 
 @app.get("/health", tags=["meta"])
