@@ -19,7 +19,7 @@ from app.schemas.stores import StoreStaffMember, StoreStaffResponse
 
 router = APIRouter(prefix="/api/v1/stores", tags=["stores"])
 
-VIEW_ROLES = ("Super Admin", "Admin", "HR")
+VIEW_ROLES = ("Super Admin", "Admin", "HR", "IT")
 
 
 def _position_rank(title: str | None) -> int:

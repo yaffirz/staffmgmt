@@ -5,7 +5,7 @@ from sqlalchemy import CheckConstraint, Column, UniqueConstraint, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlmodel import Field, SQLModel
 
-ALLOWED_ROLES = ("Super Admin", "Admin", "HR", "Area Manager")
+ALLOWED_ROLES = ("Super Admin", "Admin", "HR", "Area Manager", "IT")
 ALLOWED_STATUS_ACTIONS = ("PROMOTION", "DEMOTION", "TERMINATION", "TRANSFER")
 ALLOWED_AUDIT_ACTIONS = ("INSERT", "UPDATE", "DELETE")
 
@@ -62,7 +62,7 @@ class Users(SQLModel, table=True):
         UniqueConstraint("tenant_id", "username", name="uq_users_tenant_username"),
         UniqueConstraint("tenant_id", "email", name="uq_users_tenant_email"),
         CheckConstraint(
-            "role IN ('Super Admin', 'Admin', 'HR', 'Area Manager')",
+            "role IN ('Super Admin', 'Admin', 'HR', 'Area Manager', 'IT')",
             name="ck_users_role",
         ),
     )
@@ -72,6 +72,20 @@ class Users(SQLModel, table=True):
     username: str = Field(index=True)
     email: Optional[str] = Field(default=None)
     password_hash: str
+    role: str
+
+
+class UserRoles(SQLModel, table=True):
+    """Additional roles beyond a user's primary `users.role`. Effective roles =
+    {primary} ∪ {these}. Only a Super Admin may grant additional roles."""
+
+    __tablename__ = "user_roles"
+    __table_args__ = (
+        UniqueConstraint("user_id", "role", name="uq_user_roles_user_role"),
+    )
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: int = Field(foreign_key="users.user_id")
     role: str
 
 

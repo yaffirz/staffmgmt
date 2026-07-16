@@ -24,14 +24,21 @@ def verify_password(password: str, password_hash: str) -> bool:
         return False
 
 
-def create_access_token(subject: str, role: str, tenant_id: int, user_id: int) -> str:
+def create_access_token(
+    subject: str,
+    role: str,
+    tenant_id: int,
+    user_id: int,
+    roles: list[str] | None = None,
+) -> str:
     expire = datetime.now(timezone.utc) + timedelta(
         minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES
     )
     payload = {
         "sub": subject,          # username
         "user_id": user_id,
-        "role": role,
+        "role": role,            # primary role (kept for backward compatibility)
+        "roles": roles or [role],  # effective roles (primary + additional)
         "tenant_id": tenant_id,
         "exp": expire,
         "iat": datetime.now(timezone.utc),

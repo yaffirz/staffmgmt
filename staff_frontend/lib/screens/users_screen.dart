@@ -9,7 +9,7 @@ import '../state/auth_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_scaffold.dart';
 
-const _roles = ['Super Admin', 'Admin', 'HR', 'Area Manager'];
+const _roles = ['Super Admin', 'Admin', 'HR', 'Area Manager', 'IT'];
 
 class UsersScreen extends StatefulWidget {
   const UsersScreen({super.key});
@@ -24,11 +24,14 @@ class _UsersScreenState extends State<UsersScreen> {
   bool _loading = true;
   String? _error;
   int? _myId;
+  bool _amSuperAdmin = false;
 
   @override
   void initState() {
     super.initState();
-    _myId = context.read<AuthProvider>().user?.userId;
+    final me = context.read<AuthProvider>().user;
+    _myId = me?.userId;
+    _amSuperAdmin = me?.hasRole('Super Admin') ?? false;
     _load();
   }
 
@@ -117,6 +120,7 @@ class _UsersScreenState extends State<UsersScreen> {
     final confirmCtrl = TextEditingController();
     String role = editing?.role ?? 'Area Manager';
     List<int> brandIds = [...(editing?.brandIds ?? const [])];
+    List<String> additionalRoles = [...(editing?.additionalRoles ?? const [])];
     String? errorText;
 
     final saved = await showDialog<bool>(
@@ -150,6 +154,10 @@ class _UsersScreenState extends State<UsersScreen> {
             }
             try {
               final svc = ctx.read<StaffService>();
+              // Only a Super Admin may set additional roles; exclude the primary.
+              final extraRoles = _amSuperAdmin
+                  ? additionalRoles.where((r) => r != role).toList()
+                  : null;
               if (isEdit) {
                 await svc.updateUser(
                   editing.userId,
@@ -158,6 +166,7 @@ class _UsersScreenState extends State<UsersScreen> {
                   role: (!isSelf && role != editing.role) ? role : null,
                   password: p.isNotEmpty ? p : null,
                   brandIds: role == 'Area Manager' ? brandIds : null,
+                  additionalRoles: extraRoles,
                 );
               } else {
                 await svc.createUser(
@@ -166,6 +175,7 @@ class _UsersScreenState extends State<UsersScreen> {
                   p,
                   role,
                   brandIds: role == 'Area Manager' ? brandIds : null,
+                  additionalRoles: extraRoles,
                 );
               }
               if (ctx.mounted) Navigator.pop(ctx, true);
@@ -271,6 +281,46 @@ class _UsersScreenState extends State<UsersScreen> {
                         ),
                       ],
                     ],
+                    if (_amSuperAdmin) ...[
+                      const SizedBox(height: 16),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text('Additional roles',
+                            style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: Theme.of(ctx)
+                                    .colorScheme
+                                    .onSurfaceVariant)),
+                      ),
+                      const SizedBox(height: 2),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                            'Grant extra roles beyond the primary one (Super Admin only).',
+                            style: TextStyle(
+                                fontSize: 11,
+                                color: Theme.of(ctx)
+                                    .colorScheme
+                                    .onSurfaceVariant)),
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        children: [
+                          for (final r in _roles.where((r) => r != role))
+                            FilterChip(
+                              label: Text(r),
+                              selected: additionalRoles.contains(r),
+                              onSelected: (sel) => setLocal(() {
+                                sel
+                                    ? additionalRoles.add(r)
+                                    : additionalRoles.remove(r);
+                              }),
+                            ),
+                        ],
+                      ),
+                    ],
                     if (errorText != null) ...[
                       const SizedBox(height: 12),
                       Text(errorText!,
@@ -367,6 +417,8 @@ class _UsersScreenState extends State<UsersScreen> {
         return const Color(0xFF2E7D43);
       case 'Area Manager':
         return const Color(0xFFB26A00);
+      case 'IT':
+        return const Color(0xFF00838F);
       default:
         return cs.onSurfaceVariant;
     }
@@ -498,6 +550,14 @@ class _UsersScreenState extends State<UsersScreen> {
                             Text(u.email!,
                                 style: TextStyle(
                                     fontSize: 12.5,
+                                    color: cs.onSurfaceVariant)),
+                          ],
+                          if (u.additionalRoles.isNotEmpty) ...[
+                            const SizedBox(height: 4),
+                            Text('Also: ${u.additionalRoles.join(', ')}',
+                                style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
                                     color: cs.onSurfaceVariant)),
                           ],
                           if (isAm) ...[

@@ -25,10 +25,13 @@ def get_current_user(
         )
 
     try:
+        # Old tokens (pre multi-role) have no "roles" claim — fall back to [role].
+        roles = payload.get("roles") or [payload["role"]]
         return CurrentUser(
             user_id=payload["user_id"],
             username=payload["sub"],
             role=payload["role"],
+            roles=roles,
             tenant_id=payload["tenant_id"],
         )
     except KeyError:
@@ -44,7 +47,8 @@ def require_roles(*allowed_roles: str):
     """
 
     def _checker(current: CurrentUser = Depends(get_current_user)) -> CurrentUser:
-        if current.role not in allowed_roles:
+        # Allow if ANY of the user's effective roles is permitted.
+        if not current.has_role(*allowed_roles):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="You do not have permission to perform this action",

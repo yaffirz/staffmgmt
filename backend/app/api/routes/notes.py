@@ -36,7 +36,7 @@ from app.schemas.notes import (
 router = APIRouter(prefix="/api/v1/staff", tags=["staff-notes"])
 
 # "Area Manager and above" — who may open the staff page and author notes.
-STAFF_ROLES = ("Area Manager", "HR", "Admin", "Super Admin")
+STAFF_ROLES = ("Area Manager", "HR", "Admin", "Super Admin", "IT")
 
 
 def _am_brand_ids(current: CurrentUser, session: Session) -> set[int]:
@@ -78,7 +78,7 @@ def _get_viewable_employee(
     if emp is None or emp.tenant_id != current.tenant_id:
         raise HTTPException(status_code=404, detail="Employee not found.")
 
-    if current.role in ("Super Admin", "Admin", "HR"):
+    if current.has_role("Super Admin", "Admin", "HR", "IT"):
         return emp
 
     # Area Manager: employee must be in their cluster (primary or additional).
@@ -100,9 +100,9 @@ def _note_visible(
 ) -> bool:
     if note.author_user_id == current.user_id:
         return True
-    if current.role == "Super Admin":
+    if current.has_role("Super Admin"):
         return True
-    if current.role in (note.visibility_roles or []):
+    if current.has_role(*(note.visibility_roles or [])):
         return True
     if am_brand_ids and set(note.visibility_brand_ids or []) & am_brand_ids:
         return True
@@ -144,7 +144,7 @@ def _to_read(
         visibility_label=_visibility_label(roles, brand_ids, brand_names),
         can_edit=(
             note.author_user_id == current.user_id
-            or current.role == "Super Admin"
+            or current.has_role("Super Admin")
         ),
     )
 
@@ -187,7 +187,7 @@ def list_notes(
 ):
     """Notes on an employee that are visible to the caller, newest first."""
     _get_viewable_employee(employee_id, current, session)
-    am_brands = _am_brand_ids(current, session) if current.role == "Area Manager" else set()
+    am_brands = _am_brand_ids(current, session) if current.has_role("Area Manager") else set()
 
     notes = session.exec(
         select(StaffNotes)
@@ -223,7 +223,7 @@ def _viewable_employees(
 ) -> dict[int, str]:
     """employee_id -> name for every employee the caller may view."""
     tenant = current.tenant_id
-    if current.role in ("Super Admin", "Admin", "HR"):
+    if current.has_role("Super Admin", "Admin", "HR", "IT"):
         rows = session.exec(
             select(Employees).where(Employees.tenant_id == tenant)
         ).all()
@@ -271,7 +271,7 @@ def notes_feed(
     emp_names = _viewable_employees(current, session)
     if not emp_names:
         return []
-    am_brands = _am_brand_ids(current, session) if current.role == "Area Manager" else set()
+    am_brands = _am_brand_ids(current, session) if current.has_role("Area Manager") else set()
 
     notes = session.exec(
         select(StaffNotes)
@@ -314,7 +314,7 @@ def notes_feed(
             ),
             can_edit=(
                 n.author_user_id == current.user_id
-                or current.role == "Super Admin"
+                or current.has_role("Super Admin")
             ),
         )
         for n in visible
@@ -408,7 +408,7 @@ def _load_editable_note(
     emp = session.get(Employees, note.employee_id)
     if emp is None or emp.tenant_id != current.tenant_id:
         raise HTTPException(status_code=404, detail="Note not found.")
-    if note.author_user_id != current.user_id and current.role != "Super Admin":
+    if note.author_user_id != current.user_id and not current.has_role("Super Admin"):
         raise HTTPException(
             status_code=403, detail="Only the author or a Super Admin can change this note."
         )

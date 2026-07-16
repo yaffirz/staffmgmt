@@ -63,7 +63,7 @@ class _DashboardBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final modules = _modulesFor(user.role);
+    final modules = _modulesForRoles(user.effectiveRoles);
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
@@ -82,7 +82,8 @@ class _DashboardBody extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                'Signed in as ${user.role}. The modules below are scoped to your role.',
+                'Signed in as ${user.effectiveRoles.join(', ')}. '
+                'The modules below are scoped to your role.',
                 style: TextStyle(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
@@ -98,6 +99,19 @@ class _DashboardBody extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  /// Union of the modules for every role the user holds, deduped by title
+  /// (first occurrence wins, keeping its destination).
+  List<_Module> _modulesForRoles(List<String> roles) {
+    final seen = <String>{};
+    final out = <_Module>[];
+    for (final role in roles) {
+      for (final m in _modulesFor(role)) {
+        if (seen.add(m.title)) out.add(m);
+      }
+    }
+    return out;
   }
 
   /// Maps each role to the modules it will manage. These line up with the
@@ -148,6 +162,14 @@ class _DashboardBody extends StatelessWidget {
               'Add staff to other stores'),
           _Module('Staff Notes', Icons.sticky_note_2_outlined,
               'Performance logs',
+              dest: _Dest.allNotes),
+        ];
+      case 'IT':
+        return const [
+          _Module('Employees', Icons.badge_outlined, 'View and update staff',
+              dest: _Dest.hub),
+          _Module('Staff Notes', Icons.sticky_note_2_outlined,
+              'Provisioning & performance logs',
               dest: _Dest.allNotes),
         ];
       default:

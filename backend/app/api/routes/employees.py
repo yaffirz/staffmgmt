@@ -30,8 +30,9 @@ from app.schemas.lookups import BulkResult, BulkRowError
 
 router = APIRouter(prefix="/api/v1/employees", tags=["employees"])
 
-# Per the endpoint matrix: only these roles create/list employees.
-WRITE_ROLES = ("Super Admin", "Admin", "HR")
+# Per the endpoint matrix: these roles create/list/update employees. IT is
+# "admin-lite" and manages staff records (but not deletion — see ADMIN_ROLES).
+WRITE_ROLES = ("Super Admin", "Admin", "HR", "IT")
 ADMIN_ROLES = ("Super Admin", "Admin")
 
 

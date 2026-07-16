@@ -5,11 +5,13 @@ from app.api.deps import require_roles
 from app.core.database import get_session
 from app.core.security import hash_password
 from app.models.models import (
+    ALLOWED_ROLES as MODEL_ALLOWED_ROLES,
     AreaManagerBrands,
     AreaManagers,
     AreaManagerStores,
     AuditLogs,
     Brands,
+    UserRoles,
     Users,
 )
 from app.schemas.auth import CurrentUser
@@ -19,7 +21,36 @@ router = APIRouter(prefix="/api/v1/users", tags=["users"])
 
 # Creating/editing accounts and AM brand scope — Admins and Super Admins only.
 MANAGE_ROLES = ("Super Admin", "Admin")
-ALLOWED_ROLES = {"Super Admin", "Admin", "HR", "Area Manager"}
+ALLOWED_ROLES = set(MODEL_ALLOWED_ROLES)
+
+
+def _additional_roles_of(session: Session, user_id: int) -> list[str]:
+    return [
+        r.role
+        for r in session.exec(
+            select(UserRoles).where(UserRoles.user_id == user_id)
+        ).all()
+    ]
+
+
+def _set_additional_roles(
+    session: Session, user: Users, roles: list[str]
+) -> None:
+    """Replace a user's additional roles. Validates against ALLOWED_ROLES and
+    never stores the primary role as an 'additional' one."""
+    clean: list[str] = []
+    for r in roles:
+        if r not in ALLOWED_ROLES:
+            raise HTTPException(status_code=422, detail=f"Unknown role '{r}'.")
+        if r != user.role and r not in clean:
+            clean.append(r)
+    for existing in session.exec(
+        select(UserRoles).where(UserRoles.user_id == user.user_id)
+    ).all():
+        session.delete(existing)
+    for r in clean:
+        session.add(UserRoles(user_id=user.user_id, role=r))
+    session.commit()
 
 
 def _manager_for(session: Session, user: Users) -> AreaManagers:
@@ -106,11 +137,14 @@ def _read(session: Session, user: Users) -> UserRead:
     ids, names = ([], [])
     if user.role == "Area Manager":
         ids, names = _brands_of(session, user)
+    additional = _additional_roles_of(session, user.user_id)
     return UserRead(
         user_id=user.user_id,
         username=user.username,
         email=user.email,
         role=user.role,
+        roles=list(dict.fromkeys([user.role, *additional])),
+        additional_roles=additional,
         brand_ids=ids,
         brand_names=names,
     )
@@ -183,6 +217,14 @@ def create_user(
     if user.role == "Area Manager":
         m = _manager_for(session, user)
         _set_brands(session, m.manager_id, payload.brand_ids or [], tenant)
+
+    if payload.additional_roles is not None:
+        if not current.has_role("Super Admin"):
+            raise HTTPException(
+                status_code=403,
+                detail="Only a Super Admin can assign additional roles.",
+            )
+        _set_additional_roles(session, user, payload.additional_roles)
 
     session.add(
         AuditLogs(
@@ -280,6 +322,16 @@ def update_user(
         _set_brands(session, m.manager_id, payload.brand_ids, tenant)
         changes["brands"] = payload.brand_ids
 
+    # Additional roles (multi-role) — Super Admin only.
+    if payload.additional_roles is not None:
+        if not current.has_role("Super Admin"):
+            raise HTTPException(
+                status_code=403,
+                detail="Only a Super Admin can assign additional roles.",
+            )
+        _set_additional_roles(session, user, payload.additional_roles)
+        changes["additional_roles"] = payload.additional_roles
+
     if changes:
         session.add(
             AuditLogs(
@@ -313,6 +365,10 @@ def delete_user(
     snap = {"username": user.username, "email": user.email, "role": user.role}
     if user.role == "Area Manager":
         _remove_area_manager(session, user.user_id)
+    for r in session.exec(
+        select(UserRoles).where(UserRoles.user_id == user.user_id)
+    ).all():
+        session.delete(r)
     session.delete(user)
     session.commit()
     session.add(

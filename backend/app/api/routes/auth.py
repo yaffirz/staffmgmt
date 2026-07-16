@@ -4,10 +4,27 @@ from sqlmodel import Session, select
 from app.api.deps import get_current_user
 from app.core.database import get_session
 from app.core.security import create_access_token, verify_password
-from app.models.models import AreaManagerBrands, AreaManagers, Brands, Users
+from app.models.models import (
+    AreaManagerBrands,
+    AreaManagers,
+    Brands,
+    UserRoles,
+    Users,
+)
 from app.schemas.auth import CurrentUser, LoginRequest, TokenResponse
 
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
+
+
+def effective_roles(session: Session, user: Users) -> list[str]:
+    """A user's primary role plus any additional roles, deduped, primary first."""
+    additional = [
+        r.role
+        for r in session.exec(
+            select(UserRoles).where(UserRoles.user_id == user.user_id)
+        ).all()
+    ]
+    return list(dict.fromkeys([user.role, *additional]))
 
 
 @router.post("/login", response_model=TokenResponse)
@@ -24,15 +41,18 @@ def login(payload: LoginRequest, session: Session = Depends(get_session)):
             detail="Invalid username or password",
         )
 
+    roles = effective_roles(session, user)
     token = create_access_token(
         subject=user.username,
         role=user.role,
         tenant_id=user.tenant_id,
         user_id=user.user_id,
+        roles=roles,
     )
     return TokenResponse(
         access_token=token,
         role=user.role,
+        roles=roles,
         user_id=user.user_id,
         tenant_id=user.tenant_id,
     )

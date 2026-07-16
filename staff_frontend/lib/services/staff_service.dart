@@ -139,6 +139,7 @@ class StaffService {
     String password,
     String role, {
     List<int>? brandIds,
+    List<String>? additionalRoles,
   }) async {
     final body = <String, dynamic>{
       'username': username,
@@ -147,6 +148,7 @@ class StaffService {
       'role': role,
     };
     if (brandIds != null) body['brand_ids'] = brandIds;
+    if (additionalRoles != null) body['additional_roles'] = additionalRoles;
     final data =
         await _api.post('/api/v1/users', body) as Map<String, dynamic>;
     return UserAccount.fromJson(data);
@@ -159,6 +161,7 @@ class StaffService {
     String? role,
     String? password,
     List<int>? brandIds,
+    List<String>? additionalRoles,
   }) async {
     final body = <String, dynamic>{};
     if (username != null) body['username'] = username;
@@ -166,6 +169,7 @@ class StaffService {
     if (role != null) body['role'] = role;
     if (password != null) body['password'] = password;
     if (brandIds != null) body['brand_ids'] = brandIds;
+    if (additionalRoles != null) body['additional_roles'] = additionalRoles;
     final data =
         await _api.patch('/api/v1/users/$userId', body) as Map<String, dynamic>;
     return UserAccount.fromJson(data);

@@ -18,19 +18,22 @@ router = APIRouter(prefix="/api/v1/notifications", tags=["notifications"])
 LIST_CAP = 100
 
 
-def _visible_roles(role: str) -> set[str]:
-    """Which recipient_role values this user should receive. Super Admin sits
-    above Admin in the hierarchy, so it also sees Admin-targeted notifications.
-    (When multi-role lands, this becomes a union over the user's roles.)"""
-    if role == "Super Admin":
-        return {"Super Admin", "Admin"}
-    return {role}
+def _visible_roles(current: CurrentUser) -> set[str]:
+    """Which recipient_role values this user should receive — the union over all
+    their effective roles. Super Admin sits above Admin, so it also sees
+    Admin-targeted notifications."""
+    out: set[str] = set()
+    for r in current.roles or [current.role]:
+        out.add(r)
+        if r == "Super Admin":
+            out.add("Admin")
+    return out
 
 
 def _my_notifications(current: CurrentUser, session: Session) -> list[Notifications]:
     """All notifications targeted at this user (by user id or by role), newest
     first, within the tenant."""
-    roles = _visible_roles(current.role)
+    roles = _visible_roles(current)
     rows = session.exec(
         select(Notifications)
         .where(Notifications.tenant_id == current.tenant_id)
@@ -114,7 +117,7 @@ def mark_read(
         if notif.recipient_user_id is not None
         else (
             notif.recipient_role is not None
-            and notif.recipient_role in _visible_roles(current.role)
+            and notif.recipient_role in _visible_roles(current)
         )
     )
     if not targeted:
