@@ -30,8 +30,8 @@ Owner: Arif Asad Ali.
     (never `down -v`, which wipes data).
 - **Frontend (Flutter web) runs from `C:\Projects\staffmgmt\staff_frontend`.**
   This is the ONLY canonical frontend source; `staff_frontend\lib` is where all
-  Dart files live. (An old `frontend/` folder previously caused sync bugs — do
-  NOT use it; it should be deleted.)
+  Dart files live. (The old deprecated `frontend/` folder was removed — see
+  changelog 0026.)
   - Start (plain terminal, from `C:\Projects\staffmgmt\staff_frontend`):
     `flutter run -d web-server --web-port 5000 --dart-define=API_BASE_URL=http://localhost:8000`
     then open http://localhost:5000.
@@ -42,26 +42,36 @@ Owner: Arif Asad Ali.
 - Dates display MM/DD/YYYY everywhere (incl. bulk); wire format YYYY-MM-DD.
 - `tenant_id` is always derived from the JWT, never from the client (Phase 1: 1).
 - Passwords hashed with bcrypt directly. bcrypt/JWT carry sub/user_id/role/tenant_id.
-- Roles: Super Admin, Admin, HR, Area Manager. Footer "Created by Arif Asad Ali".
+- Roles: Super Admin, Admin, HR, Area Manager, IT. Users may hold multiple roles
+  (additional roles are Super-Admin-assignable only; effective roles = primary +
+  additional, carried in the JWT). Footer "Created by Arif Asad Ali".
 - Verify before delivering: Python `python3 -m compileall`; Dart via `flutter analyze`.
 
-## Current state (see changelog/0001 for full baseline)
-- Done: auth/roles; employees CRUD (wizard, list, edit, delete, additional stores);
-  configurable new-hire form; brands/stores/positions hub (add/edit/bulk/multi-delete
-  with referential-integrity blocking); bulk import for all entity types (template
-  download + file upload + paste); Users & Roles (email required+unique, AM multi-brand
-  picker, role-grouped list); Area Manager "My Cluster" READ view (Phase 2a).
-- Area Manager scoping is BRAND-based: an AM covers one or more brands (assigned by
-  Admin/Super Admin in Users & Roles). Their cluster = all stores in those brands; a
-  staff member appears under a store if it's their primary OR additional store.
-- `area_manager_brands` table holds AM↔brand links. `area_manager_stores` exists but
-  is currently unused.
+## Current state (baseline in changelog/0001; full history in changelog/*)
+- Foundations: auth/roles; employees CRUD (wizard, list, edit, delete, additional
+  stores); configurable new-hire form; brands/stores/positions hub; bulk import;
+  Users & Roles.
+- **Area Manager scoping is BRAND-based**: an AM covers one or more brands; their
+  cluster = all stores in those brands. A staffer shows under a store if it's their
+  primary OR an additional store. `area_manager_brands` holds AM↔brand links;
+  `area_manager_stores` is unused.
+- **Phase 2 (done):** My Cluster view; Move (change primary store) + Request staff;
+  Cross-store Assignments (add additional stores, accumulative); admin toggle
+  "Area Managers can move staff".
+- **Staff notes (done):** per-note visibility — private (author + Super Admin) or
+  shared by role/brand; individual staff page + an all-notes feed; `staff_notes_enabled`
+  toggle.
+- **IT role + multi-role (done):** IT is admin-lite; `user_roles` junction holds
+  additional roles (Super-Admin-assigned); effective roles gate everything.
+- **Phase 3 (done):** status changes — promote/demote (position) + terminate/
+  reactivate (`employees.employment_status`) → `staff_status_log`; Status Changes feed.
+- **Notifications (done):** per-user inbox (`notifications` + `notification_reads`)
+  with a topbar bell; all 5 IT/manager triggers live — reviewed→AM, cross-store→IT,
+  promote/demote/terminate→IT.
+- **Admin mini-console (done):** `GET /api/v1/audit-logs` + Audit Logs screen
+  (standing rule #3).
 
 ## Next planned work
-- Phase 2b: Move Staff + Request Staff flows (staff name search → name/brand/stores;
-  request queued to admins/IT via notifications). Buttons already stubbed on the
-  My Cluster store cards.
-- Phase 3: status changes (promote/demote/transfer/terminate → `staff_status_log`),
-  staff notes, notifications inbox.
-- Admin mini-console for logs/activity (standing rule 3).
-- `employees` needs an `employment_status` column for Terminate (add non-destructively).
+- (No committed backlog.) Candidate follow-ups: hide/filter terminated staff from
+  active rosters; relabel/retire the dead admin "Notifications" dashboard tile
+  (the bell supersedes it); make audit_logs tenant-scoped before multi-tenant.
