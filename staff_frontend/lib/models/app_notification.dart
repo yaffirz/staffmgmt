@@ -77,6 +77,8 @@ class AppNotification {
         return 'Staff requested';
       case 'STAFF_ASSIGNED':
         return 'Staff assigned';
+      case 'STAFF_REVIEWED':
+        return 'Staff ready — please check';
       case 'STAFF_PROMOTED':
         return 'Staff promoted';
       case 'STAFF_DEMOTED':
@@ -110,6 +112,11 @@ class AppNotification {
         final store = _s('store_name') ?? 'another store';
         final by = _s('by_username') ?? 'An area manager';
         return '$who assigned to $store by $by.';
+      case 'STAFF_REVIEWED':
+        final who = _s('employee_name') ?? 'A staff member';
+        final store = _s('store_name');
+        final where = store == null ? '' : ' at $store';
+        return "$who's account is reviewed. Please check them$where in about an hour.";
       case 'STAFF_PROMOTED':
       case 'STAFF_DEMOTED':
         final who = _s('employee_name') ?? 'A staff member';
@@ -138,7 +145,8 @@ class AppNotification {
       type == 'STAFF_PROMOTED' ||
       type == 'STAFF_DEMOTED' ||
       type == 'STAFF_TERMINATED' ||
-      type == 'STAFF_REACTIVATED';
+      type == 'STAFF_REACTIVATED' ||
+      type == 'STAFF_REVIEWED';
 
   String _prettifyType() {
     return type

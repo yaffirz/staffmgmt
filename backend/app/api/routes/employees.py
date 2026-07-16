@@ -8,12 +8,15 @@ from sqlmodel import Session, select
 from app.api.deps import require_roles
 from app.core.database import get_session
 from app.models.models import (
+    AreaManagerBrands,
+    AreaManagers,
     AuditLogs,
     Brands,
     Countries,
     Employees,
     EmployeeAdditionalStores,
     FormFieldConfig,
+    Notifications,
     Positions,
     StaffNotes,
     StaffStatusLog,
@@ -339,6 +342,52 @@ def list_employees(
     return result
 
 
+def _notify_managers_reviewed(
+    session: Session, emp: Employees, current: CurrentUser
+) -> None:
+    """When an employee is marked reviewed, tell the Area Manager(s) of that
+    employee's brand to check them shortly (fires immediately; the message asks
+    them to follow up in ~an hour)."""
+    if emp.primary_store_id is None:
+        return
+    store = session.get(Stores, emp.primary_store_id)
+    if store is None:
+        return
+    manager_ids = {
+        link.manager_id
+        for link in session.exec(
+            select(AreaManagerBrands).where(
+                AreaManagerBrands.brand_id == store.brand_id
+            )
+        ).all()
+    }
+    if not manager_ids:
+        return
+    user_ids = {
+        m.user_id
+        for m in session.exec(
+            select(AreaManagers).where(AreaManagers.manager_id.in_(manager_ids))
+        ).all()
+    }
+    for uid in user_ids:
+        session.add(
+            Notifications(
+                tenant_id=current.tenant_id,
+                recipient_user_id=uid,
+                type="STAFF_REVIEWED",
+                payload={
+                    "employee_id": emp.employee_id,
+                    "employee_name": emp.employee_name,
+                    "store_name": store.store_name,
+                    "by_user_id": current.user_id,
+                    "by_username": current.username,
+                },
+            )
+        )
+    if user_ids:
+        session.commit()
+
+
 @router.patch("/{employee_id}/reviewed", response_model=EmployeeRead)
 def set_reviewed(
     employee_id: int,
@@ -370,6 +419,10 @@ def set_reviewed(
         )
     )
     session.commit()
+
+    # Notify the brand's Area Manager(s) when a row is newly marked reviewed.
+    if payload.reviewed and not old:
+        _notify_managers_reviewed(session, emp, current)
 
     return _enrich(emp, session)
 
