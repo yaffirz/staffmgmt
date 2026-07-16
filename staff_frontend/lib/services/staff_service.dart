@@ -295,6 +295,14 @@ class StaffService {
     );
   }
 
+  /// Assign a cluster staffer to an additional store (accumulative).
+  Future<void> assignStore(int employeeId, int storeId) async {
+    await _api.post(
+      '/api/v1/cluster/employees/$employeeId/assign-store',
+      {'store_id': storeId},
+    );
+  }
+
   // ---- App settings (admin toggles) --------------------------------------
 
   Future<String> getSetting(String key) async {

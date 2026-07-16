@@ -52,3 +52,15 @@ class RequestAssignmentRequest(BaseModel):
 class RequestAssignmentResult(BaseModel):
     status: str
     notification_id: int
+
+
+# ---- Cross-store assignment (add an additional store) ---------------------
+class AssignStoreRequest(BaseModel):
+    store_id: int
+
+
+class AssignStoreResult(BaseModel):
+    employee_id: int
+    employee_name: str
+    store_id: int
+    store_name: str

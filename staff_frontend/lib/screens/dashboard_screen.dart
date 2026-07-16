@@ -12,6 +12,7 @@ import 'employees_hub_screen.dart';
 import 'form_settings_screen.dart';
 import 'all_notes_screen.dart';
 import 'brands_stores_hub_screen.dart';
+import 'cross_store_screen.dart';
 import 'my_cluster_screen.dart';
 import 'settings_screen.dart';
 import 'status_feed_screen.dart';
@@ -162,7 +163,8 @@ class _DashboardBody extends StatelessWidget {
               'Staff in your assigned stores',
               dest: _Dest.myCluster),
           _Module('Cross-store Assignments', Icons.alt_route_outlined,
-              'Add staff to other stores'),
+              'Add staff to other stores',
+              dest: _Dest.crossStore),
           _Module('Staff Notes', Icons.sticky_note_2_outlined,
               'Performance logs',
               dest: _Dest.allNotes),
@@ -195,7 +197,8 @@ enum _Dest {
   myCluster,
   settings,
   allNotes,
-  statusFeed
+  statusFeed,
+  crossStore
 }
 
 class _Module {
@@ -287,6 +290,13 @@ class _ModuleCard extends StatelessWidget {
                 Navigator.of(context).push(
                   MaterialPageRoute(
                     builder: (_) => const StatusFeedScreen(),
+                  ),
+                );
+                break;
+              case _Dest.crossStore:
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const CrossStoreScreen(),
                   ),
                 );
                 break;

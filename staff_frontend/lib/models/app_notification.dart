@@ -45,6 +45,8 @@ class AppNotification {
         return _i('to_store_id');
       case 'STAFF_REQUESTED':
         return _i('requested_store_id');
+      case 'STAFF_ASSIGNED':
+        return _i('store_id');
       default:
         return null;
     }
@@ -56,6 +58,8 @@ class AppNotification {
         return _s('to_store_name');
       case 'STAFF_REQUESTED':
         return _s('requested_store_name');
+      case 'STAFF_ASSIGNED':
+        return _s('store_name');
       default:
         return null;
     }
@@ -71,6 +75,8 @@ class AppNotification {
         return 'Staff moved';
       case 'STAFF_REQUESTED':
         return 'Staff requested';
+      case 'STAFF_ASSIGNED':
+        return 'Staff assigned';
       case 'STAFF_PROMOTED':
         return 'Staff promoted';
       case 'STAFF_DEMOTED':
@@ -99,6 +105,11 @@ class AppNotification {
         final store = _s('requested_store_name') ?? 'a store';
         final by = _s('by_username') ?? 'An area manager';
         return '$by requested $who for $store.';
+      case 'STAFF_ASSIGNED':
+        final who = _s('employee_name') ?? 'A staff member';
+        final store = _s('store_name') ?? 'another store';
+        final by = _s('by_username') ?? 'An area manager';
+        return '$who assigned to $store by $by.';
       case 'STAFF_PROMOTED':
       case 'STAFF_DEMOTED':
         final who = _s('employee_name') ?? 'A staff member';

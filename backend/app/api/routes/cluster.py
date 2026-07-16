@@ -23,6 +23,8 @@ from app.models.models import (
 )
 from app.schemas.auth import CurrentUser
 from app.schemas.cluster import (
+    AssignStoreRequest,
+    AssignStoreResult,
     ClusterResponse,
     ClusterStaff,
     ClusterStore,
@@ -408,3 +410,94 @@ def request_assignment(
     session.commit()
 
     return RequestAssignmentResult(status="requested", notification_id=notif.notification_id)
+
+
+@router.post(
+    "/employees/{employee_id}/assign-store",
+    response_model=AssignStoreResult,
+    status_code=status.HTTP_201_CREATED,
+)
+def assign_store(
+    employee_id: int,
+    payload: AssignStoreRequest,
+    current: CurrentUser = Depends(require_roles(*AM_ONLY)),
+    session: Session = Depends(get_session),
+):
+    """Assign a staffer to an ADDITIONAL store within the AM's cluster (their
+    primary store is unchanged; stores accumulate). Notifies IT."""
+    _manager, _brand_ids, store_ids = _am_scope(current, session)
+
+    emp = session.get(Employees, employee_id)
+    if emp is None or emp.tenant_id != current.tenant_id:
+        raise HTTPException(status_code=404, detail="Employee not found.")
+
+    # The staffer must already be in the AM's cluster (primary or additional).
+    add_links = session.exec(
+        select(EmployeeAdditionalStores).where(
+            EmployeeAdditionalStores.employee_id == employee_id
+        )
+    ).all()
+    in_cluster = emp.primary_store_id in store_ids or any(
+        link.store_id in store_ids for link in add_links
+    )
+    if not in_cluster:
+        raise HTTPException(
+            status_code=403, detail="This staff member is not in your cluster."
+        )
+
+    store_id = payload.store_id
+    if store_id not in store_ids:
+        raise HTTPException(
+            status_code=400, detail="That store is not in your cluster."
+        )
+    if store_id == emp.primary_store_id:
+        raise HTTPException(
+            status_code=400, detail="That is already their primary store."
+        )
+    if any(link.store_id == store_id for link in add_links):
+        raise HTTPException(
+            status_code=400,
+            detail="They are already assigned to that store.",
+        )
+    store = session.get(Stores, store_id)
+    if store is None or store.tenant_id != current.tenant_id:
+        raise HTTPException(status_code=400, detail="Store not found.")
+
+    session.add(
+        EmployeeAdditionalStores(employee_id=employee_id, store_id=store_id)
+    )
+    session.commit()
+
+    session.add(
+        Notifications(
+            tenant_id=current.tenant_id,
+            recipient_role="IT",
+            type="STAFF_ASSIGNED",
+            payload={
+                "employee_id": emp.employee_id,
+                "employee_name": emp.employee_name,
+                "store_id": store.store_id,
+                "store_name": store.store_name,
+                "by_user_id": current.user_id,
+                "by_username": current.username,
+            },
+        )
+    )
+    session.add(
+        AuditLogs(
+            user_id=current.user_id,
+            action="INSERT",
+            affected_table="employee_additional_stores",
+            record_id=f"{employee_id}:{store_id}",
+            old_value=None,
+            new_value={"employee_id": employee_id, "store_id": store_id},
+        )
+    )
+    session.commit()
+
+    return AssignStoreResult(
+        employee_id=emp.employee_id,
+        employee_name=emp.employee_name,
+        store_id=store.store_id,
+        store_name=store.store_name,
+    )
