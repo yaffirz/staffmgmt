@@ -13,6 +13,7 @@ from app.api.routes import (
     notes,
     notifications,
     settings as settings_routes,
+    status as status_routes,
     stores,
     users,
 )
@@ -56,6 +57,7 @@ app.include_router(settings_routes.router)
 app.include_router(notifications.router)
 app.include_router(stores.router)
 app.include_router(notes.router)
+app.include_router(status_routes.router)
 
 
 @app.get("/health", tags=["meta"])

@@ -172,10 +172,12 @@ def staff_page(
         employee_id=emp.employee_id,
         employee_name=emp.employee_name,
         payroll_id=emp.payroll_id,
+        position_id=emp.position_id,
         position_title=position.position_title if position else None,
         store_name=store.store_name if store else None,
         brand_id=store.brand_id if store else None,
         brand_name=brand.brand_name if brand else None,
+        employment_status=emp.employment_status,
     )
 
 

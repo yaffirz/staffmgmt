@@ -6,7 +6,13 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlmodel import Field, SQLModel
 
 ALLOWED_ROLES = ("Super Admin", "Admin", "HR", "Area Manager", "IT")
-ALLOWED_STATUS_ACTIONS = ("PROMOTION", "DEMOTION", "TERMINATION", "TRANSFER")
+ALLOWED_STATUS_ACTIONS = (
+    "PROMOTION",
+    "DEMOTION",
+    "TERMINATION",
+    "REACTIVATION",
+    "TRANSFER",
+)
 ALLOWED_AUDIT_ACTIONS = ("INSERT", "UPDATE", "DELETE")
 
 
@@ -142,6 +148,8 @@ class Employees(SQLModel, table=True):
     primary_store_id: Optional[int] = Field(default=None, foreign_key="stores.store_id")
     position_id: Optional[int] = Field(default=None, foreign_key="positions.position_id")
     reviewed: bool = Field(default=False, index=True)
+    # 'active' | 'terminated'. Added via non-destructive migration.
+    employment_status: str = Field(default="active")
     created_at: datetime = Field(default_factory=utcnow)
 
 

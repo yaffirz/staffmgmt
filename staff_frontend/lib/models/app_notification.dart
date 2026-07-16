@@ -71,6 +71,14 @@ class AppNotification {
         return 'Staff moved';
       case 'STAFF_REQUESTED':
         return 'Staff requested';
+      case 'STAFF_PROMOTED':
+        return 'Staff promoted';
+      case 'STAFF_DEMOTED':
+        return 'Staff role changed';
+      case 'STAFF_TERMINATED':
+        return 'Staff terminated';
+      case 'STAFF_REACTIVATED':
+        return 'Staff reactivated';
       default:
         return _prettifyType();
     }
@@ -91,10 +99,35 @@ class AppNotification {
         final store = _s('requested_store_name') ?? 'a store';
         final by = _s('by_username') ?? 'An area manager';
         return '$by requested $who for $store.';
+      case 'STAFF_PROMOTED':
+      case 'STAFF_DEMOTED':
+        final who = _s('employee_name') ?? 'A staff member';
+        final pos = _s('to_position_title');
+        final by = _s('by_username') ?? 'HR';
+        final verb = type == 'STAFF_PROMOTED' ? 'promoted' : 'moved';
+        return pos == null
+            ? '$who $verb by $by.'
+            : '$who $verb to $pos by $by.';
+      case 'STAFF_TERMINATED':
+        final who = _s('employee_name') ?? 'A staff member';
+        final by = _s('by_username') ?? 'HR';
+        return '$who terminated by $by.';
+      case 'STAFF_REACTIVATED':
+        final who = _s('employee_name') ?? 'A staff member';
+        final by = _s('by_username') ?? 'HR';
+        return '$who reactivated by $by.';
       default:
         return payload.isEmpty ? '' : payload.toString();
     }
   }
+
+  /// True for notifications that should open the employee's staff page (rather
+  /// than a store drilldown).
+  bool get opensStaffPage =>
+      type == 'STAFF_PROMOTED' ||
+      type == 'STAFF_DEMOTED' ||
+      type == 'STAFF_TERMINATED' ||
+      type == 'STAFF_REACTIVATED';
 
   String _prettifyType() {
     return type

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../models/app_notification.dart';
+import '../screens/employee_detail_screen.dart';
 import '../screens/store_drilldown_screen.dart';
 import '../services/staff_service.dart';
 
@@ -52,16 +53,27 @@ class _NotificationBellState extends State<NotificationBell> {
   void _handleSelect(AppNotification n) {
     _menu.close();
     final storeId = n.targetStoreId;
-    if (storeId == null) return;
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => StoreDrilldownScreen(
-          storeId: storeId,
-          storeName: n.targetStoreName,
-          highlightEmployeeId: n.targetEmployeeId,
+    if (storeId != null) {
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => StoreDrilldownScreen(
+            storeId: storeId,
+            storeName: n.targetStoreName,
+            highlightEmployeeId: n.targetEmployeeId,
+          ),
         ),
-      ),
-    );
+      );
+      return;
+    }
+    // Status-change notifications open the employee's staff page.
+    final empId = n.targetEmployeeId;
+    if (n.opensStaffPage && empId != null) {
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => EmployeeDetailScreen(employeeId: empId),
+        ),
+      );
+    }
   }
 
   @override

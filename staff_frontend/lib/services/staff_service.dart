@@ -7,6 +7,7 @@ import '../models/form_field_config.dart';
 import '../models/staff_note.dart';
 import '../models/staff_page.dart';
 import '../models/staff_search_result.dart';
+import '../models/status_log.dart';
 import '../models/store_staff.dart';
 import '../models/user_account.dart';
 import 'api_client.dart';
@@ -349,6 +350,35 @@ class StaffService {
 
   Future<void> deleteNote(int noteId) async {
     await _api.delete('/api/v1/staff/notes/$noteId');
+  }
+
+  // ---- Status changes (Phase 3) ------------------------------------------
+
+  /// Promote / demote / terminate / reactivate a staff member.
+  Future<void> changeStatus(
+    int employeeId, {
+    required String actionType,
+    int? toPositionId,
+    String? reason,
+  }) async {
+    final body = <String, dynamic>{'action_type': actionType};
+    if (toPositionId != null) body['to_position_id'] = toPositionId;
+    if (reason != null && reason.trim().isNotEmpty) body['reason'] = reason.trim();
+    await _api.post('/api/v1/staff/$employeeId/status', body);
+  }
+
+  Future<List<StatusLogEntry>> statusLog(int employeeId) async {
+    final data = await _api.get('/api/v1/staff/$employeeId/status-log') as List;
+    return data
+        .map((e) => StatusLogEntry.fromJson(e as Map<String, dynamic>))
+        .toList(growable: false);
+  }
+
+  Future<List<StatusLogEntry>> statusFeed() async {
+    final data = await _api.get('/api/v1/staff/status/feed') as List;
+    return data
+        .map((e) => StatusLogEntry.fromJson(e as Map<String, dynamic>))
+        .toList(growable: false);
   }
 
   /// The current user's own brands (Area Managers) — defaults the brand picker.

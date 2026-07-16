@@ -7,10 +7,12 @@ class StaffPageEmployee(BaseModel):
     employee_id: int
     employee_name: str
     payroll_id: str
+    position_id: int | None = None
     position_title: str | None = None
     store_name: str | None = None
     brand_id: int | None = None
     brand_name: str | None = None
+    employment_status: str = "active"
 
 
 class NoteRead(BaseModel):

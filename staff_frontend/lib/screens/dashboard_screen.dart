@@ -14,6 +14,7 @@ import 'all_notes_screen.dart';
 import 'brands_stores_hub_screen.dart';
 import 'my_cluster_screen.dart';
 import 'settings_screen.dart';
+import 'status_feed_screen.dart';
 import 'users_screen.dart';
 
 class DashboardScreen extends StatelessWidget {
@@ -128,7 +129,8 @@ class _DashboardBody extends StatelessWidget {
           _Module('Users & Roles', Icons.admin_panel_settings_outlined,
               'App accounts and access', dest: _Dest.users),
           _Module('Status Changes', Icons.swap_vert_circle_outlined,
-              'Promote, demote, terminate'),
+              'Promote, demote, terminate',
+              dest: _Dest.statusFeed),
           _Module('Audit Logs', Icons.fact_check_outlined,
               'Full change history'),
           _Module('Notifications', Icons.notifications_none,
@@ -148,7 +150,8 @@ class _DashboardBody extends StatelessWidget {
           _Module('Employees', Icons.badge_outlined, 'View and update staff',
               dest: _Dest.hub),
           _Module('Status Changes', Icons.swap_vert_circle_outlined,
-              'Promote, demote, terminate'),
+              'Promote, demote, terminate',
+              dest: _Dest.statusFeed),
           _Module('Staff Notes', Icons.sticky_note_2_outlined,
               'Performance logs',
               dest: _Dest.allNotes),
@@ -191,7 +194,8 @@ enum _Dest {
   users,
   myCluster,
   settings,
-  allNotes
+  allNotes,
+  statusFeed
 }
 
 class _Module {
@@ -276,6 +280,13 @@ class _ModuleCard extends StatelessWidget {
                 Navigator.of(context).push(
                   MaterialPageRoute(
                     builder: (_) => const AllNotesScreen(),
+                  ),
+                );
+                break;
+              case _Dest.statusFeed:
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const StatusFeedScreen(),
                   ),
                 );
                 break;

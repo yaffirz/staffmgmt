@@ -20,6 +20,9 @@ _MIGRATIONS = [
     "ALTER TABLE users DROP CONSTRAINT IF EXISTS ck_users_role",
     "ALTER TABLE users ADD CONSTRAINT ck_users_role "
     "CHECK (role IN ('Super Admin', 'Admin', 'HR', 'Area Manager', 'IT'))",
+    # Employment status for termination/reactivation.
+    "ALTER TABLE employees ADD COLUMN IF NOT EXISTS "
+    "employment_status VARCHAR NOT NULL DEFAULT 'active'",
 ]
 
 
