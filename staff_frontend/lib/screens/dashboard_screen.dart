@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../models/auth_user.dart';
 import '../state/auth_provider.dart';
 import '../theme/app_theme.dart';
+import '../widgets/app_logo.dart';
 import '../widgets/app_scaffold.dart';
 import '../widgets/notification_bell.dart';
 import '../widgets/theme_toggle.dart';
@@ -11,6 +12,7 @@ import 'new_hire_wizard_screen.dart';
 import 'employees_hub_screen.dart';
 import 'form_settings_screen.dart';
 import 'all_notes_screen.dart';
+import 'announcements_screen.dart';
 import 'audit_logs_screen.dart';
 import 'brands_stores_hub_screen.dart';
 import 'cross_store_screen.dart';
@@ -28,7 +30,14 @@ class DashboardScreen extends StatelessWidget {
 
     return AppScaffold(
       appBar: AppBar(
-        title: const Text('Staff Portal'),
+        title: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            AppLogo(size: 28),
+            SizedBox(width: 10),
+            Text('Staff Portal'),
+          ],
+        ),
         actions: [
           const NotificationBell(),
           const SizedBox(width: 4),
@@ -119,32 +128,36 @@ class _DashboardBody extends StatelessWidget {
 
   /// Maps each role to the modules it will manage. These line up with the
   /// endpoint matrix; Steps 3 & 4 wire them to real screens.
+  // Shared by Super Admin and Admin. Super Admin also gets Announcements.
+  static const List<_Module> _adminModules = [
+    _Module('Employees', Icons.badge_outlined, 'Add, view and update staff',
+        dest: _Dest.hub),
+    _Module('Brands & Stores', Icons.storefront_outlined,
+        'Organisation structure', dest: _Dest.brandsHub),
+    _Module('Users & Roles', Icons.admin_panel_settings_outlined,
+        'App accounts and access', dest: _Dest.users),
+    _Module('Status Changes', Icons.swap_vert_circle_outlined,
+        'Promote, demote, terminate', dest: _Dest.statusFeed),
+    _Module('Audit Logs', Icons.fact_check_outlined, 'Full change history',
+        dest: _Dest.auditLogs),
+    _Module('Notifications', Icons.notifications_none, 'Area Manager alerts'),
+    _Module('Form Settings', Icons.tune, 'Customise form fields',
+        dest: _Dest.formSettings),
+    _Module('Settings', Icons.settings_outlined, 'Feature toggles',
+        dest: _Dest.settings),
+  ];
+
   List<_Module> _modulesFor(String role) {
     switch (role) {
       case 'Super Admin':
-      case 'Admin':
         return const [
-          _Module('Employees', Icons.badge_outlined, 'Add, view and update staff',
-              dest: _Dest.hub),
-          _Module('Brands & Stores', Icons.storefront_outlined,
-              'Organisation structure', dest: _Dest.brandsHub),
-          _Module('Users & Roles', Icons.admin_panel_settings_outlined,
-              'App accounts and access', dest: _Dest.users),
-          _Module('Status Changes', Icons.swap_vert_circle_outlined,
-              'Promote, demote, terminate',
-              dest: _Dest.statusFeed),
-          _Module('Audit Logs', Icons.fact_check_outlined,
-              'Full change history',
-              dest: _Dest.auditLogs),
-          _Module('Notifications', Icons.notifications_none,
-              'Area Manager alerts'),
-          _Module('Form Settings', Icons.tune,
-              'Customise form fields',
-              dest: _Dest.formSettings),
-          _Module('Settings', Icons.settings_outlined,
-              'Feature toggles',
-              dest: _Dest.settings),
+          ..._adminModules,
+          _Module('Announcements', Icons.campaign_outlined,
+              'Broadcast to all users',
+              dest: _Dest.announcements),
         ];
+      case 'Admin':
+        return _adminModules;
       case 'HR':
         return const [
           _Module('New Hire', Icons.person_add_alt_1_outlined,
@@ -201,7 +214,8 @@ enum _Dest {
   allNotes,
   statusFeed,
   crossStore,
-  auditLogs
+  auditLogs,
+  announcements
 }
 
 class _Module {
@@ -307,6 +321,13 @@ class _ModuleCard extends StatelessWidget {
                 Navigator.of(context).push(
                   MaterialPageRoute(
                     builder: (_) => const AuditLogsScreen(),
+                  ),
+                );
+                break;
+              case _Dest.announcements:
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const AnnouncementsScreen(),
                   ),
                 );
                 break;

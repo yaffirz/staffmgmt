@@ -87,6 +87,8 @@ class AppNotification {
         return 'Staff terminated';
       case 'STAFF_REACTIVATED':
         return 'Staff reactivated';
+      case 'ANNOUNCEMENT':
+        return _s('title') ?? 'Announcement';
       default:
         return _prettifyType();
     }
@@ -134,6 +136,8 @@ class AppNotification {
         final who = _s('employee_name') ?? 'A staff member';
         final by = _s('by_username') ?? 'HR';
         return '$who reactivated by $by.';
+      case 'ANNOUNCEMENT':
+        return _s('body') ?? '';
       default:
         return payload.isEmpty ? '' : payload.toString();
     }

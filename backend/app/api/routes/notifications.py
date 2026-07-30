@@ -17,12 +17,16 @@ router = APIRouter(prefix="/api/v1/notifications", tags=["notifications"])
 # Max rows returned by the inbox list.
 LIST_CAP = 100
 
+# Sentinel recipient_role that targets every user (used by broadcast
+# announcements). Every user's visible-role set includes it.
+BROADCAST_ROLE = "All"
+
 
 def _visible_roles(current: CurrentUser) -> set[str]:
     """Which recipient_role values this user should receive — the union over all
     their effective roles. Super Admin sits above Admin, so it also sees
-    Admin-targeted notifications."""
-    out: set[str] = set()
+    Admin-targeted notifications. Everyone receives BROADCAST_ROLE."""
+    out: set[str] = {BROADCAST_ROLE}
     for r in current.roles or [current.role]:
         out.add(r)
         if r == "Super Admin":

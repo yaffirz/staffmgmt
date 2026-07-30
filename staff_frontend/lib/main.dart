@@ -8,6 +8,7 @@ import 'services/server_config_store.dart';
 import 'services/staff_service.dart';
 import 'services/token_store.dart';
 import 'state/auth_provider.dart';
+import 'state/maintenance_provider.dart';
 import 'state/server_provider.dart';
 import 'state/theme_provider.dart';
 import 'theme/app_theme.dart';
@@ -49,6 +50,8 @@ class StaffPortalApp extends StatelessWidget {
         // not here — it needs the server URL to be known first.
         ChangeNotifierProvider(create: (_) => AuthProvider(authService)),
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
+        ChangeNotifierProvider(
+            create: (_) => MaintenanceProvider(staffService)),
         Provider<StaffService>.value(value: staffService),
       ],
       child: Consumer<ThemeProvider>(

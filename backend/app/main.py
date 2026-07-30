@@ -1,16 +1,20 @@
+import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from sqlmodel import Session
 
 from app.api.routes import (
+    announcements,
     audit,
     auth,
     cluster,
     employees,
     form_config,
     lookups,
+    maintenance,
     notes,
     notifications,
     settings as settings_routes,
@@ -60,8 +64,21 @@ app.include_router(stores.router)
 app.include_router(notes.router)
 app.include_router(status_routes.router)
 app.include_router(audit.router)
+app.include_router(maintenance.router)
+app.include_router(announcements.router)
 
 
 @app.get("/health", tags=["meta"])
 def health():
     return {"status": "ok"}
+
+
+# --- Static frontend (optional) ---------------------------------------------
+# When a built Flutter web bundle is present (bind-mounted in via docker-compose,
+# or copied in), serve it at the root so ONE origin serves both the UI and the
+# API — ideal behind a single Cloudflare tunnel hostname (no CORS, one link).
+# Mounted LAST so it never shadows /health, /docs, or the /api/v1 routes.
+# Absent in pure-API/dev setups, so this is a no-op there.
+WEB_DIR = os.getenv("WEB_DIR", "/code/web")
+if os.path.isfile(os.path.join(WEB_DIR, "index.html")):
+    app.mount("/", StaticFiles(directory=WEB_DIR, html=True), name="web")

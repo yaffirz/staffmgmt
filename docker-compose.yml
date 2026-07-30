@@ -34,12 +34,33 @@ services:
       SEED_ADMIN_USERNAME: ${SEED_ADMIN_USERNAME:-superadmin}
       SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-ChangeMe123!}
       DEFAULT_TENANT_ID: ${DEFAULT_TENANT_ID:-1}
+      # Where the backend looks for a built Flutter web bundle to serve at "/".
+      WEB_DIR: /code/web
     ports:
       - "8000:8000"
     # For local dev: live-reload when you edit code on the host.
     volumes:
       - ./backend/app:/code/app
+      # Serve the built web UI same-origin from :8000 (run `flutter build web`
+      # first). Read-only; if the folder is empty the backend just skips it.
+      - ./staff_frontend/build/web:/code/web:ro
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  # Cloudflare tunnel — publishes the app on your Cloudflare hostname without
+  # opening any inbound ports. Only runs when you opt in with the "tunnel"
+  # profile:  docker compose --profile tunnel up -d
+  # Set TUNNEL_TOKEN in .env (Zero Trust > Networks > Tunnels > your tunnel >
+  # Docker). In the dashboard, route your public hostname to http://backend:8000.
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: staffmgmt_cloudflared
+    restart: unless-stopped
+    profiles: ["tunnel"]
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${TUNNEL_TOKEN:-}
+    depends_on:
+      - backend
 
 volumes:
   pgdata:

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
@@ -29,9 +30,16 @@ class ServerProvider extends ChangeNotifier {
 
   Future<void> _load() async {
     _baseUrl = await _store.readBaseUrl();
-    _status = (_baseUrl == null || _baseUrl!.isEmpty)
-        ? ServerStatus.unconfigured
-        : ServerStatus.configured;
+    if (_baseUrl != null && _baseUrl!.isNotEmpty) {
+      _status = ServerStatus.configured;
+    } else if (kIsWeb) {
+      // Served same-origin (e.g. behind the tunnel): use this origin and skip
+      // the connect-to-server step entirely. Native still shows the setup screen.
+      _baseUrl = AppConfig.apiBaseUrl;
+      _status = ServerStatus.configured;
+    } else {
+      _status = ServerStatus.unconfigured;
+    }
     notifyListeners();
   }
 

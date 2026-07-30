@@ -6,7 +6,8 @@ that too). Full per-change detail is in **`changelog/0001`–`0028`**. Feature/r
 reference for end users is in **`docs/USER_GUIDE.md`**; Android build steps in
 **`docs/BUILD_APK.md`**.
 
-_Last updated: 2026-07-16 (AST). Everything below is committed and pushed._
+_Last updated: 2026-07-17 (AST). Everything below is committed and pushed
+(except the working-tree edits from changelog 0030 until committed)._
 
 ---
 
@@ -166,10 +167,14 @@ cross-store, staff notes + visibility + feed, IT/multi-role dashboards + Users&R
 picker, Phase 3 status changes + feed + IT notifications, trigger #1 render +
 click-through.
 
-**Not visually confirmed (tooling only):** the **Audit Logs** screen — backend
-curl-verified, `flutter analyze` clean, app confirmed running, model↔schema exact.
-The in-app browser's screenshot capture was wedged by the DWDS glitch (§8); the code
-is sound. Worth an eyeball on a fresh full restart.
+**Audit Logs screen — now verified in-browser (2026-07-17, changelog 0030).**
+Dashboard tile → screen opens; filter chips work (All ↔ Notes narrowed correctly);
+all three action badges render (UPD blue / NEW green / DEL red); row detail dialog
+shows action · table #id, "By {user} · {timestamp}", and Before/After JSON
+({reviewed: false}→{reviewed: true}); dates display MM/DD/YYYY. Backend re-confirmed
+by curl: newest-first with user_name + summary, `?table=` filter, non-admin → 403.
+The DWDS injected-client console error (§8) still appears but was debug-tooling only
+and did not block the app this time.
 
 ---
 

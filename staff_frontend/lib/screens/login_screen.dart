@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../state/auth_provider.dart';
 import '../state/server_provider.dart';
 import '../theme/app_theme.dart';
+import '../widgets/app_logo.dart';
 import '../widgets/app_scaffold.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -268,15 +269,7 @@ class _Wordmark extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Container(
-          width: 34,
-          height: 34,
-          decoration: BoxDecoration(
-            color: AppColors.amber,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: const Icon(Icons.groups_2, color: AppColors.ink, size: 20),
-        ),
+        const AppLogo(size: 34),
         const SizedBox(width: 10),
         Text(
           'Staff Portal',

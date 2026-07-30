@@ -70,8 +70,28 @@ Owner: Arif Asad Ali.
   promote/demote/terminate→IT.
 - **Admin mini-console (done):** `GET /api/v1/audit-logs` + Audit Logs screen
   (standing rule #3).
+- **Maintenance mode (done):** `maintenance_mode`/`maintenance_message`/
+  `maintenance_until` settings + admin toggle & duration picker (Settings);
+  public `GET /api/v1/maintenance/status`; animated maintenance page gates field
+  roles (HR, Area Manager) while Super Admin/Admin/IT keep access. Client-side
+  enforcement (see changelog 0031).
+- **Announcements (done):** Super Admin broadcasts a message to all users via the
+  bell or a one-time popup — a broadcast Notification (`recipient_role="All"`,
+  `type="ANNOUNCEMENT"`); popup dismissal reuses `notification_reads`
+  (changelog 0032).
+- **Branding (done):** custom `AppLogo` (CustomPainter — amber badge + a
+  "team hierarchy" glyph) shared across login/server-setup/dashboard; matching
+  SVG favicon + PWA icons; browser tab is "Staff Portal" (changelog 0033).
+- **Single-origin serving + Cloudflare tunnel groundwork (done):** the backend
+  serves the built Flutter web (`staff_frontend/build/web`, bind-mounted) at `/`
+  so one origin serves UI + API; on web the app auto-uses its own origin. A
+  profile-gated `cloudflared` service publishes it — `docker compose --profile
+  tunnel up -d` with `TUNNEL_TOKEN` in `.env`. See `docs/CLOUDFLARE_TUNNEL.md`
+  (changelog 0034). Live tunnel still needs the owner's Cloudflare token/hostname.
 
 ## Next planned work
 - (No committed backlog.) Candidate follow-ups: hide/filter terminated staff from
   active rosters; relabel/retire the dead admin "Notifications" dashboard tile
-  (the bell supersedes it); make audit_logs tenant-scoped before multi-tenant.
+  (the bell supersedes it); make audit_logs tenant-scoped before multi-tenant;
+  optional server-side write-gating during maintenance; an admin
+  manage/expire-announcements view.

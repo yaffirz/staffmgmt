@@ -5,6 +5,7 @@ import '../models/cluster.dart';
 import '../models/directory.dart';
 import '../models/employee.dart';
 import '../models/form_field_config.dart';
+import '../models/maintenance_status.dart';
 import '../models/staff_note.dart';
 import '../models/staff_page.dart';
 import '../models/staff_search_result.dart';
@@ -302,6 +303,39 @@ class StaffService {
       '/api/v1/cluster/employees/$employeeId/assign-store',
       {'store_id': storeId},
     );
+  }
+
+  // ---- Maintenance mode --------------------------------------------------
+
+  /// Public maintenance state (no auth needed — used before/after login).
+  Future<MaintenanceStatus> maintenanceStatus() async {
+    final data = await _api.get('/api/v1/maintenance/status', auth: false)
+        as Map<String, dynamic>;
+    return MaintenanceStatus.fromJson(data);
+  }
+
+  // ---- Announcements -----------------------------------------------------
+
+  /// Broadcast an announcement to everyone (Super Admin only).
+  /// [delivery] is 'bell' (inbox only) or 'popup' (one-time dialog + inbox).
+  Future<void> createAnnouncement({
+    required String title,
+    required String body,
+    required String delivery,
+  }) async {
+    await _api.post('/api/v1/announcements', {
+      'title': title,
+      'body': body,
+      'delivery': delivery,
+    });
+  }
+
+  /// Unread popup announcements for the current user (shown as one-time dialogs).
+  Future<List<AppNotification>> popupAnnouncements() async {
+    final data = await _api.get('/api/v1/announcements/popup') as List;
+    return data
+        .map((e) => AppNotification.fromJson(e as Map<String, dynamic>))
+        .toList(growable: false);
   }
 
   // ---- App settings (admin toggles) --------------------------------------

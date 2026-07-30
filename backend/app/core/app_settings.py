@@ -15,6 +15,14 @@ DEFAULTS: dict[str, str] = {
     "area_managers_can_move": "true",
     # Standing-rule toggle: is the staff-notes feature enabled (writing notes)?
     "staff_notes_enabled": "true",
+    # Maintenance mode: when on, field users (HR / Area Manager) see the
+    # maintenance page; back-office roles (Super Admin / Admin / IT) keep working.
+    "maintenance_mode": "false",
+    # Optional custom message shown on the maintenance page (empty = default text).
+    "maintenance_message": "",
+    # Optional ISO-8601 end time for the maintenance window (empty = no ETA).
+    # The Settings UI turns a chosen duration into this absolute timestamp.
+    "maintenance_until": "",
 }
 
 

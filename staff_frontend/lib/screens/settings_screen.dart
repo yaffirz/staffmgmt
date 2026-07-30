@@ -15,6 +15,19 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   static const _moveKey = 'area_managers_can_move';
   static const _notesKey = 'staff_notes_enabled';
+  static const _maintKey = 'maintenance_mode';
+  static const _maintMsgKey = 'maintenance_message';
+  static const _maintUntilKey = 'maintenance_until';
+
+  // Duration options for the maintenance window (label -> minutes; null = none).
+  static const _durationOptions = <String, int?>{
+    'No end time': null,
+    '15 minutes': 15,
+    '30 minutes': 30,
+    '1 hour': 60,
+    '2 hours': 120,
+    '4 hours': 240,
+  };
 
   bool _loading = true;
   String? _error;
@@ -22,10 +35,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _notesEnabled = true;
   bool _saving = false;
 
+  // Maintenance state.
+  bool _maintenanceOn = false;
+  DateTime? _maintenanceUntil; // saved absolute end time
+  String _selectedDuration = 'No end time';
+  final TextEditingController _msgController = TextEditingController();
+  bool _savingWindow = false;
+
   @override
   void initState() {
     super.initState();
     _load();
+  }
+
+  @override
+  void dispose() {
+    _msgController.dispose();
+    super.dispose();
   }
 
   Future<void> _load() async {
@@ -35,12 +61,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
     });
     try {
       final svc = context.read<StaffService>();
-      final results =
-          await Future.wait([svc.getSetting(_moveKey), svc.getSetting(_notesKey)]);
+      final results = await Future.wait([
+        svc.getSetting(_moveKey),
+        svc.getSetting(_notesKey),
+        svc.getSetting(_maintKey),
+        svc.getSetting(_maintMsgKey),
+        svc.getSetting(_maintUntilKey),
+      ]);
       if (!mounted) return;
+      final untilRaw = results[4];
       setState(() {
         _canMove = results[0].toLowerCase() == 'true';
         _notesEnabled = results[1].toLowerCase() == 'true';
+        _maintenanceOn = results[2].toLowerCase() == 'true';
+        _msgController.text = results[3];
+        _maintenanceUntil =
+            untilRaw.isEmpty ? null : DateTime.tryParse(untilRaw);
         _loading = false;
       });
     } catch (_) {
@@ -52,31 +88,32 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  Future<void> _setCanMove(bool value) async {
+  Future<void> _setBoolSetting(
+    String key,
+    bool value,
+    void Function(bool) apply,
+    String Function(bool) message,
+  ) async {
     setState(() {
-      _canMove = value; // optimistic
+      apply(value); // optimistic
       _saving = true;
     });
     try {
       final saved = await context
           .read<StaffService>()
-          .updateSetting(_moveKey, value ? 'true' : 'false');
+          .updateSetting(key, value ? 'true' : 'false');
       if (!mounted) return;
+      final on = saved.toLowerCase() == 'true';
       setState(() {
-        _canMove = saved.toLowerCase() == 'true';
+        apply(on);
         _saving = false;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(_canMove
-              ? 'Area Managers can now move staff.'
-              : 'Area Managers can no longer move staff.'),
-        ),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(message(on))));
     } catch (_) {
       if (!mounted) return;
       setState(() {
-        _canMove = !value; // revert
+        apply(!value); // revert
         _saving = false;
       });
       ScaffoldMessenger.of(context).showSnackBar(
@@ -85,37 +122,66 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  Future<void> _setNotesEnabled(bool value) async {
-    setState(() {
-      _notesEnabled = value; // optimistic
-      _saving = true;
-    });
+  Future<void> _setCanMove(bool value) => _setBoolSetting(
+        _moveKey,
+        value,
+        (v) => _canMove = v,
+        (on) => on
+            ? 'Area Managers can now move staff.'
+            : 'Area Managers can no longer move staff.',
+      );
+
+  Future<void> _setNotesEnabled(bool value) => _setBoolSetting(
+        _notesKey,
+        value,
+        (v) => _notesEnabled = v,
+        (on) => on ? 'Staff notes are enabled.' : 'Staff notes are disabled.',
+      );
+
+  Future<void> _setMaintenance(bool value) => _setBoolSetting(
+        _maintKey,
+        value,
+        (v) => _maintenanceOn = v,
+        (on) => on
+            ? 'Maintenance mode is ON — field users are now blocked.'
+            : 'Maintenance mode is OFF.',
+      );
+
+  /// Save the custom message + the maintenance window end time (derived from the
+  /// chosen duration, starting now).
+  Future<void> _saveWindow() async {
+    setState(() => _savingWindow = true);
+    final minutes = _durationOptions[_selectedDuration];
+    final until = minutes == null
+        ? ''
+        : DateTime.now().toUtc().add(Duration(minutes: minutes)).toIso8601String();
     try {
-      final saved = await context
-          .read<StaffService>()
-          .updateSetting(_notesKey, value ? 'true' : 'false');
+      final svc = context.read<StaffService>();
+      await svc.updateSetting(_maintMsgKey, _msgController.text.trim());
+      final savedUntil = await svc.updateSetting(_maintUntilKey, until);
       if (!mounted) return;
       setState(() {
-        _notesEnabled = saved.toLowerCase() == 'true';
-        _saving = false;
+        _maintenanceUntil =
+            savedUntil.isEmpty ? null : DateTime.tryParse(savedUntil);
+        _selectedDuration = 'No end time'; // reset the relative picker
+        _savingWindow = false;
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(_notesEnabled
-              ? 'Staff notes are enabled.'
-              : 'Staff notes are disabled.'),
-        ),
+        const SnackBar(content: Text('Maintenance message & window saved.')),
       );
     } catch (_) {
       if (!mounted) return;
-      setState(() {
-        _notesEnabled = !value; // revert
-        _saving = false;
-      });
+      setState(() => _savingWindow = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not update the setting.')),
+        const SnackBar(content: Text('Could not save the maintenance window.')),
       );
     }
+  }
+
+  static String _fmt(DateTime dt) {
+    final l = dt.toLocal();
+    String two(int n) => n.toString().padLeft(2, '0');
+    return '${two(l.month)}/${two(l.day)}/${l.year} ${two(l.hour)}:${two(l.minute)}';
   }
 
   @override
@@ -140,8 +206,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
       );
     }
-    final cs = Theme.of(context).colorScheme;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
       child: Center(
@@ -150,53 +214,141 @@ class _SettingsScreenState extends State<SettingsScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text('Area Manager permissions',
-                  style: Theme.of(context)
-                      .textTheme
-                      .titleMedium
-                      ?.copyWith(fontWeight: FontWeight.w700)),
+              _sectionTitle('Area Manager permissions'),
               const SizedBox(height: 12),
-              Container(
-                decoration: BoxDecoration(
-                  color: isDark ? cs.surfaceContainerHigh : Colors.white,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: cs.outlineVariant),
-                ),
-                child: SwitchListTile(
-                  title: const Text('Area Managers can move staff'),
-                  subtitle: const Text(
-                      'When off, Area Managers cannot change a staffer\'s '
-                      'primary store from My Cluster.'),
-                  value: _canMove,
-                  onChanged: _saving ? null : _setCanMove,
-                ),
-              ),
+              _card(SwitchListTile(
+                title: const Text('Area Managers can move staff'),
+                subtitle: const Text(
+                    'When off, Area Managers cannot change a staffer\'s '
+                    'primary store from My Cluster.'),
+                value: _canMove,
+                onChanged: _saving ? null : _setCanMove,
+              )),
               const SizedBox(height: 24),
-              Text('Staff notes',
-                  style: Theme.of(context)
-                      .textTheme
-                      .titleMedium
-                      ?.copyWith(fontWeight: FontWeight.w700)),
+              _sectionTitle('Staff notes'),
               const SizedBox(height: 12),
-              Container(
-                decoration: BoxDecoration(
-                  color: isDark ? cs.surfaceContainerHigh : Colors.white,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: cs.outlineVariant),
-                ),
-                child: SwitchListTile(
-                  title: const Text('Staff notes enabled'),
-                  subtitle: const Text(
-                      'When off, no one can add or edit notes on staff. '
-                      'Existing notes stay viewable.'),
-                  value: _notesEnabled,
-                  onChanged: _saving ? null : _setNotesEnabled,
-                ),
-              ),
+              _card(SwitchListTile(
+                title: const Text('Staff notes enabled'),
+                subtitle: const Text(
+                    'When off, no one can add or edit notes on staff. '
+                    'Existing notes stay viewable.'),
+                value: _notesEnabled,
+                onChanged: _saving ? null : _setNotesEnabled,
+              )),
+              const SizedBox(height: 24),
+              _sectionTitle('Maintenance mode'),
+              const SizedBox(height: 12),
+              _maintenanceCard(),
             ],
           ),
         ),
       ),
     );
+  }
+
+  Widget _sectionTitle(String text) => Text(
+        text,
+        style: Theme.of(context)
+            .textTheme
+            .titleMedium
+            ?.copyWith(fontWeight: FontWeight.w700),
+      );
+
+  Widget _card(Widget child) {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark ? cs.surfaceContainerHigh : Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: cs.outlineVariant),
+      ),
+      child: child,
+    );
+  }
+
+  Widget _maintenanceCard() {
+    final cs = Theme.of(context).colorScheme;
+    return _card(Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SwitchListTile(
+            title: const Text('Maintenance mode'),
+            subtitle: const Text(
+                'When on, HR and Area Managers see a maintenance page. '
+                'Super Admin, Admin and IT keep full access.'),
+            value: _maintenanceOn,
+            onChanged: _saving ? null : _setMaintenance,
+          ),
+          if (_maintenanceOn && _maintenanceUntil != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: Row(
+                children: [
+                  Icon(Icons.schedule, size: 16, color: cs.onSurfaceVariant),
+                  const SizedBox(width: 6),
+                  Text('Window ends: ${_fmt(_maintenanceUntil!)}',
+                      style: TextStyle(color: cs.onSurfaceVariant)),
+                ],
+              ),
+            ),
+          const Divider(height: 1),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+            child: TextField(
+              controller: _msgController,
+              maxLines: 2,
+              decoration: const InputDecoration(
+                labelText: 'Message shown to users (optional)',
+                hintText: 'e.g. Upgrading the roster system — back by 3pm.',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+            child: Row(
+              children: [
+                Expanded(
+                  child: DropdownButtonFormField<String>(
+                    initialValue: _selectedDuration,
+                    decoration: const InputDecoration(
+                      labelText: 'Duration from now',
+                      border: OutlineInputBorder(),
+                    ),
+                    items: [
+                      for (final label in _durationOptions.keys)
+                        DropdownMenuItem(value: label, child: Text(label)),
+                    ],
+                    onChanged: (v) =>
+                        setState(() => _selectedDuration = v ?? 'No end time'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                FilledButton(
+                  onPressed: _savingWindow ? null : _saveWindow,
+                  child: _savingWindow
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2))
+                      : const Text('Save'),
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+            child: Text(
+              'Saving a duration sets the countdown shown on the maintenance '
+              'page (starting now). Choose “No end time” to hide the countdown.',
+              style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant),
+            ),
+          ),
+        ],
+      ),
+    ));
   }
 }

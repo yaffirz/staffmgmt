@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Staff Portal">
+  <rect width="64" height="64" rx="16.6" fill="#E9A23B"/>
+  <g stroke="#0F3D3E" stroke-width="3.33" stroke-linecap="round">
+    <line x1="32" y1="19.84" x2="17.92" y2="45.44"/>
+    <line x1="32" y1="19.84" x2="46.08" y2="45.44"/>
+  </g>
+  <g fill="#0F3D3E">
+    <circle cx="17.92" cy="45.44" r="6.91"/>
+    <circle cx="46.08" cy="45.44" r="6.91"/>
+    <circle cx="32" cy="19.84" r="8.64"/>
+  </g>
+</svg>
