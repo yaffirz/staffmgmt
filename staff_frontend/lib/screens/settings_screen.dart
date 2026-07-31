@@ -18,6 +18,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
   static const _maintKey = 'maintenance_mode';
   static const _maintMsgKey = 'maintenance_message';
   static const _maintUntilKey = 'maintenance_until';
+  static const _mktEnabledKey = 'marketing_enabled';
+  static const _mktTypeKey = 'marketing_type';
+  static const _mktTitleKey = 'marketing_title';
+  static const _mktContentKey = 'marketing_content';
+  static const _registrationKey = 'registration_enabled';
+
+  // Marketing content types (value -> label).
+  static const _mktTypes = <String, String>{
+    'text': 'Text',
+    'image': 'Image (URL)',
+    'embed': 'Video / embed (URL)',
+  };
 
   // Duration options for the maintenance window (label -> minutes; null = none).
   static const _durationOptions = <String, int?>{
@@ -42,6 +54,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final TextEditingController _msgController = TextEditingController();
   bool _savingWindow = false;
 
+  // Marketing block state.
+  bool _marketingOn = false;
+  String _marketingType = 'text';
+  final TextEditingController _mktTitleController = TextEditingController();
+  final TextEditingController _mktContentController = TextEditingController();
+  bool _savingMarketing = false;
+
+  // Registration.
+  bool _registrationOn = false;
+
   @override
   void initState() {
     super.initState();
@@ -51,6 +73,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   void dispose() {
     _msgController.dispose();
+    _mktTitleController.dispose();
+    _mktContentController.dispose();
     super.dispose();
   }
 
@@ -67,9 +91,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
         svc.getSetting(_maintKey),
         svc.getSetting(_maintMsgKey),
         svc.getSetting(_maintUntilKey),
+        svc.getSetting(_mktEnabledKey),
+        svc.getSetting(_mktTypeKey),
+        svc.getSetting(_mktTitleKey),
+        svc.getSetting(_mktContentKey),
+        svc.getSetting(_registrationKey),
       ]);
       if (!mounted) return;
       final untilRaw = results[4];
+      final mktType = results[6].toLowerCase();
       setState(() {
         _canMove = results[0].toLowerCase() == 'true';
         _notesEnabled = results[1].toLowerCase() == 'true';
@@ -77,6 +107,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _msgController.text = results[3];
         _maintenanceUntil =
             untilRaw.isEmpty ? null : DateTime.tryParse(untilRaw);
+        _marketingOn = results[5].toLowerCase() == 'true';
+        _marketingType = _mktTypes.containsKey(mktType) ? mktType : 'text';
+        _mktTitleController.text = results[7];
+        _mktContentController.text = results[8];
+        _registrationOn = results[9].toLowerCase() == 'true';
         _loading = false;
       });
     } catch (_) {
@@ -178,6 +213,46 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  Future<void> _setRegistration(bool value) => _setBoolSetting(
+        _registrationKey,
+        value,
+        (v) => _registrationOn = v,
+        (on) => on
+            ? 'Self-registration is ON — the login screen shows "Create account".'
+            : 'Self-registration is OFF.',
+      );
+
+  Future<void> _setMarketing(bool value) => _setBoolSetting(
+        _mktEnabledKey,
+        value,
+        (v) => _marketingOn = v,
+        (on) => on
+            ? 'Marketing block is ON — shown on the login screen.'
+            : 'Marketing block is OFF.',
+      );
+
+  /// Save the marketing type, title and content together.
+  Future<void> _saveMarketing() async {
+    setState(() => _savingMarketing = true);
+    try {
+      final svc = context.read<StaffService>();
+      await svc.updateSetting(_mktTypeKey, _marketingType);
+      await svc.updateSetting(_mktTitleKey, _mktTitleController.text.trim());
+      await svc.updateSetting(_mktContentKey, _mktContentController.text.trim());
+      if (!mounted) return;
+      setState(() => _savingMarketing = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Marketing block saved.')),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _savingMarketing = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not save the marketing block.')),
+      );
+    }
+  }
+
   static String _fmt(DateTime dt) {
     final l = dt.toLocal();
     String two(int n) => n.toString().padLeft(2, '0');
@@ -239,6 +314,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
               _sectionTitle('Maintenance mode'),
               const SizedBox(height: 12),
               _maintenanceCard(),
+              const SizedBox(height: 24),
+              _sectionTitle('Login marketing block'),
+              const SizedBox(height: 12),
+              _marketingCard(),
+              const SizedBox(height: 24),
+              _sectionTitle('Account registration'),
+              const SizedBox(height: 12),
+              _card(SwitchListTile(
+                title: const Text('Allow self-registration'),
+                subtitle: const Text(
+                    'Shows a "Create account" link on login. New sign-ups '
+                    'confirm their email, then need admin approval in '
+                    'Registrations. (Email sending is not yet configured.)'),
+                value: _registrationOn,
+                onChanged: _saving ? null : _setRegistration,
+              )),
             ],
           ),
         ),
@@ -265,6 +356,102 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
       child: child,
     );
+  }
+
+  Widget _marketingCard() {
+    final cs = Theme.of(context).colorScheme;
+    final isText = _marketingType == 'text';
+    final contentLabel = switch (_marketingType) {
+      'image' => 'Image URL',
+      'embed' => 'Video / embed URL',
+      _ => 'Text to show',
+    };
+    final contentHint = switch (_marketingType) {
+      'image' => 'https://…/banner.png',
+      'embed' => 'https://www.youtube.com/embed/VIDEO_ID',
+      _ => 'e.g. New staff perks program launching next month!',
+    };
+    return _card(Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SwitchListTile(
+            title: const Text('Show marketing block on login'),
+            subtitle: const Text(
+                'A customizable promo area on the login screen (desktop & '
+                'mobile). Supports text, an image, or a video/embed.'),
+            value: _marketingOn,
+            onChanged: _saving ? null : _setMarketing,
+          ),
+          const Divider(height: 1),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+            child: DropdownButtonFormField<String>(
+              initialValue: _marketingType,
+              decoration: const InputDecoration(
+                labelText: 'Content type',
+                border: OutlineInputBorder(),
+              ),
+              items: [
+                for (final e in _mktTypes.entries)
+                  DropdownMenuItem(value: e.key, child: Text(e.value)),
+              ],
+              onChanged: (v) =>
+                  setState(() => _marketingType = v ?? 'text'),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+            child: TextField(
+              controller: _mktTitleController,
+              decoration: const InputDecoration(
+                labelText: 'Heading (optional)',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+            child: TextField(
+              controller: _mktContentController,
+              maxLines: isText ? 4 : 1,
+              keyboardType:
+                  isText ? TextInputType.multiline : TextInputType.url,
+              decoration: InputDecoration(
+                labelText: contentLabel,
+                hintText: contentHint,
+                border: const OutlineInputBorder(),
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: FilledButton(
+                onPressed: _savingMarketing ? null : _saveMarketing,
+                child: _savingMarketing
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2))
+                    : const Text('Save'),
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+            child: Text(
+              'Image/embed use a URL you host elsewhere (a direct image link, or '
+              'a YouTube/Vimeo embed URL). On the mobile app, videos show as a '
+              'tappable link. Turn the switch on to display it.',
+              style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant),
+            ),
+          ),
+        ],
+      ),
+    ));
   }
 
   Widget _maintenanceCard() {

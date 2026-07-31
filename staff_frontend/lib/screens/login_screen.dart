@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../services/staff_service.dart';
 import '../state/auth_provider.dart';
+import '../state/marketing_provider.dart';
 import '../state/server_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_logo.dart';
 import '../widgets/app_scaffold.dart';
+import '../widgets/marketing_block.dart';
+import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -19,6 +23,20 @@ class _LoginScreenState extends State<LoginScreen> {
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscure = true;
+  bool _registrationEnabled = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Re-fetch the marketing block now the server URL is known (matters on
+    // native, where the server is set on the setup screen before login).
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      context.read<MarketingProvider>().refresh();
+      final on = await context.read<StaffService>().registrationEnabled();
+      if (mounted) setState(() => _registrationEnabled = on);
+    });
+  }
 
   @override
   void dispose() {
@@ -79,6 +97,8 @@ class _LoginScreenState extends State<LoginScreen> {
                     const _Wordmark(dark: true),
                     const SizedBox(height: 28),
                     form,
+                    const SizedBox(height: 28),
+                    const Center(child: MarketingBlock(onDark: false)),
                   ],
                 ),
               ),
@@ -155,6 +175,17 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
           const SizedBox(height: 18),
           const _ServerLine(),
+          if (_registrationEnabled) ...[
+            const SizedBox(height: 2),
+            Center(
+              child: TextButton(
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const RegisterScreen()),
+                ),
+                child: const Text('Create an account'),
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -247,6 +278,8 @@ class _BrandPanel extends StatelessWidget {
               height: 1.5,
             ),
           ),
+          const SizedBox(height: 32),
+          const MarketingBlock(onDark: true),
         ],
       ),
     );

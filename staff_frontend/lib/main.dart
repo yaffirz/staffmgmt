@@ -9,6 +9,7 @@ import 'services/staff_service.dart';
 import 'services/token_store.dart';
 import 'state/auth_provider.dart';
 import 'state/maintenance_provider.dart';
+import 'state/marketing_provider.dart';
 import 'state/server_provider.dart';
 import 'state/theme_provider.dart';
 import 'theme/app_theme.dart';
@@ -52,6 +53,8 @@ class StaffPortalApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
         ChangeNotifierProvider(
             create: (_) => MaintenanceProvider(staffService)),
+        ChangeNotifierProvider(
+            create: (_) => MarketingProvider(staffService)),
         Provider<StaffService>.value(value: staffService),
       ],
       child: Consumer<ThemeProvider>(
