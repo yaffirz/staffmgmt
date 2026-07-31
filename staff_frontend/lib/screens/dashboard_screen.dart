@@ -3,23 +3,20 @@ import 'package:provider/provider.dart';
 
 import '../models/auth_user.dart';
 import '../state/auth_provider.dart';
-import '../theme/app_theme.dart';
 import '../widgets/app_logo.dart';
 import '../widgets/app_scaffold.dart';
+import '../widgets/module_card.dart';
 import '../widgets/notification_bell.dart';
 import '../widgets/theme_toggle.dart';
-import 'new_hire_wizard_screen.dart';
-import 'employees_hub_screen.dart';
-import 'form_settings_screen.dart';
+import 'admin_hub_screen.dart';
 import 'all_notes_screen.dart';
-import 'announcements_screen.dart';
-import 'audit_logs_screen.dart';
 import 'brands_stores_hub_screen.dart';
 import 'cross_store_screen.dart';
+import 'employees_hub_screen.dart';
 import 'my_cluster_screen.dart';
-import 'settings_screen.dart';
+import 'my_store_screen.dart';
+import 'new_hire_wizard_screen.dart';
 import 'status_feed_screen.dart';
-import 'users_screen.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
@@ -69,6 +66,45 @@ class DashboardScreen extends StatelessWidget {
   }
 }
 
+void _open(BuildContext context, _Dest dest) {
+  Widget? screen;
+  switch (dest) {
+    case _Dest.wizard:
+      screen = const NewHireWizardScreen();
+      break;
+    case _Dest.hub:
+      screen = const EmployeesHubScreen();
+      break;
+    case _Dest.brandsHub:
+      screen = const BrandsStoresHubScreen();
+      break;
+    case _Dest.myCluster:
+      screen = const MyClusterScreen();
+      break;
+    case _Dest.allNotes:
+      screen = const AllNotesScreen();
+      break;
+    case _Dest.statusFeed:
+      screen = const StatusFeedScreen();
+      break;
+    case _Dest.crossStore:
+      screen = const CrossStoreScreen();
+      break;
+    case _Dest.myStore:
+      screen = const MyStoreScreen();
+      break;
+    case _Dest.adminHub:
+      screen = const AdminHubScreen();
+      break;
+    case _Dest.none:
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('The bell (top right) now handles this.')),
+      );
+      return;
+  }
+  Navigator.of(context).push(MaterialPageRoute(builder: (_) => screen!));
+}
+
 class _DashboardBody extends StatelessWidget {
   final AuthUser user;
   const _DashboardBody({required this.user});
@@ -104,7 +140,15 @@ class _DashboardBody extends StatelessWidget {
               Wrap(
                 spacing: 16,
                 runSpacing: 16,
-                children: [for (final m in modules) _ModuleCard(module: m)],
+                children: [
+                  for (final m in modules)
+                    ModuleCard(
+                      icon: m.icon,
+                      title: m.title,
+                      subtitle: m.subtitle,
+                      onTap: () => _open(context, m.dest),
+                    ),
+                ],
               ),
             ],
           ),
@@ -113,8 +157,6 @@ class _DashboardBody extends StatelessWidget {
     );
   }
 
-  /// Union of the modules for every role the user holds, deduped by title
-  /// (first occurrence wins, keeping its destination).
   List<_Module> _modulesForRoles(List<String> roles) {
     final seen = <String>{};
     final out = <_Module>[];
@@ -126,36 +168,23 @@ class _DashboardBody extends StatelessWidget {
     return out;
   }
 
-  /// Maps each role to the modules it will manage. These line up with the
-  /// endpoint matrix; Steps 3 & 4 wire them to real screens.
-  // Shared by Super Admin and Admin. Super Admin also gets Announcements.
+  /// Admin & Super Admin: operational tiles + the Admin hub (which holds the
+  /// config/admin tools). Other roles get their own scoped set.
   static const List<_Module> _adminModules = [
     _Module('Employees', Icons.badge_outlined, 'Add, view and update staff',
         dest: _Dest.hub),
     _Module('Brands & Stores', Icons.storefront_outlined,
         'Organisation structure', dest: _Dest.brandsHub),
-    _Module('Users & Roles', Icons.admin_panel_settings_outlined,
-        'App accounts and access', dest: _Dest.users),
     _Module('Status Changes', Icons.swap_vert_circle_outlined,
         'Promote, demote, terminate', dest: _Dest.statusFeed),
-    _Module('Audit Logs', Icons.fact_check_outlined, 'Full change history',
-        dest: _Dest.auditLogs),
     _Module('Notifications', Icons.notifications_none, 'Area Manager alerts'),
-    _Module('Form Settings', Icons.tune, 'Customise form fields',
-        dest: _Dest.formSettings),
-    _Module('Settings', Icons.settings_outlined, 'Feature toggles',
-        dest: _Dest.settings),
+    _Module('Admin', Icons.shield_outlined,
+        'Users, settings, console & backups', dest: _Dest.adminHub),
   ];
 
   List<_Module> _modulesFor(String role) {
     switch (role) {
       case 'Super Admin':
-        return const [
-          ..._adminModules,
-          _Module('Announcements', Icons.campaign_outlined,
-              'Broadcast to all users',
-              dest: _Dest.announcements),
-        ];
       case 'Admin':
         return _adminModules;
       case 'HR':
@@ -192,6 +221,17 @@ class _DashboardBody extends StatelessWidget {
               'Provisioning & performance logs',
               dest: _Dest.allNotes),
         ];
+      case 'Store':
+        return const [
+          _Module('My Store', Icons.store_outlined, 'Staff at your store',
+              dest: _Dest.myStore),
+        ];
+      case 'Foodmall':
+        return const [
+          _Module('My Foodmall', Icons.storefront_outlined,
+              'Staff across your foodmall brands',
+              dest: _Dest.myStore),
+        ];
       default:
         return const [
           _Module('Staff Notes', Icons.sticky_note_2_outlined,
@@ -206,16 +246,13 @@ enum _Dest {
   none,
   wizard,
   hub,
-  formSettings,
   brandsHub,
-  users,
   myCluster,
-  settings,
   allNotes,
   statusFeed,
   crossStore,
-  auditLogs,
-  announcements
+  myStore,
+  adminHub,
 }
 
 class _Module {
@@ -225,167 +262,4 @@ class _Module {
   final _Dest dest;
   const _Module(this.title, this.icon, this.subtitle,
       {this.dest = _Dest.none});
-}
-
-class _ModuleCard extends StatelessWidget {
-  final _Module module;
-  const _ModuleCard({required this.module});
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final cardColor = isDark ? cs.surfaceContainerHigh : Colors.white;
-    final borderColor = isDark ? cs.outlineVariant : AppColors.line;
-
-    return SizedBox(
-      width: 300,
-      child: Material(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(14),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(14),
-          onTap: () {
-            switch (module.dest) {
-              case _Dest.wizard:
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => const NewHireWizardScreen(),
-                  ),
-                );
-                break;
-              case _Dest.hub:
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => const EmployeesHubScreen(),
-                  ),
-                );
-                break;
-              case _Dest.formSettings:
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => const FormSettingsScreen(),
-                  ),
-                );
-                break;
-              case _Dest.brandsHub:
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => const BrandsStoresHubScreen(),
-                  ),
-                );
-                break;
-              case _Dest.users:
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => const UsersScreen(),
-                  ),
-                );
-                break;
-              case _Dest.myCluster:
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => const MyClusterScreen(),
-                  ),
-                );
-                break;
-              case _Dest.settings:
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => const SettingsScreen(),
-                  ),
-                );
-                break;
-              case _Dest.allNotes:
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => const AllNotesScreen(),
-                  ),
-                );
-                break;
-              case _Dest.statusFeed:
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => const StatusFeedScreen(),
-                  ),
-                );
-                break;
-              case _Dest.crossStore:
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => const CrossStoreScreen(),
-                  ),
-                );
-                break;
-              case _Dest.auditLogs:
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => const AuditLogsScreen(),
-                  ),
-                );
-                break;
-              case _Dest.announcements:
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => const AnnouncementsScreen(),
-                  ),
-                );
-                break;
-              case _Dest.none:
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                      content:
-                          Text('${module.title} — coming in a later step')),
-                );
-                break;
-            }
-          },
-          child: Container(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: borderColor),
-            ),
-            padding: const EdgeInsets.all(18),
-            child: Row(
-              children: [
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: cs.primary.withOpacity(isDark ? 0.18 : 0.08),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Icon(module.icon, color: cs.primary),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        module.title,
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 15,
-                          color: cs.onSurface,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        module.subtitle,
-                        style: TextStyle(
-                          color: cs.onSurfaceVariant,
-                          fontSize: 12.5,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
 }
