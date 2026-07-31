@@ -5,7 +5,15 @@ from sqlalchemy import CheckConstraint, Column, UniqueConstraint, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlmodel import Field, SQLModel
 
-ALLOWED_ROLES = ("Super Admin", "Admin", "HR", "Area Manager", "IT")
+ALLOWED_ROLES = (
+    "Super Admin",
+    "Admin",
+    "HR",
+    "Area Manager",
+    "IT",
+    "Store",
+    "Foodmall",
+)
 ALLOWED_STATUS_ACTIONS = (
     "PROMOTION",
     "DEMOTION",
@@ -38,6 +46,36 @@ class Stores(SQLModel, table=True):
     tenant_id: int = Field(default=1, index=True)
     brand_id: int = Field(foreign_key="brands.brand_id")
     store_name: str
+    # A foodmall store carries multiple brands (its primary brand_id plus the
+    # extra brands in `store_brands`). Added via non-destructive migration.
+    is_foodmall: bool = Field(default=False)
+
+
+class StoreBrands(SQLModel, table=True):
+    """Extra brands a foodmall store carries, beyond its primary `stores.brand_id`.
+    A store's effective brands = {brand_id} ∪ these."""
+
+    __tablename__ = "store_brands"
+    __table_args__ = (
+        UniqueConstraint("store_id", "brand_id", name="uq_storebrands_store_brand"),
+    )
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    store_id: int = Field(foreign_key="stores.store_id")
+    brand_id: int = Field(foreign_key="brands.brand_id")
+
+
+class StoreUsers(SQLModel, table=True):
+    """Links a Store/Foodmall account to the single store it manages."""
+
+    __tablename__ = "store_users"
+    __table_args__ = (
+        UniqueConstraint("user_id", name="uq_storeusers_user"),
+    )
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: int = Field(foreign_key="users.user_id")
+    store_id: int = Field(foreign_key="stores.store_id")
 
 
 class Positions(SQLModel, table=True):
@@ -68,7 +106,8 @@ class Users(SQLModel, table=True):
         UniqueConstraint("tenant_id", "username", name="uq_users_tenant_username"),
         UniqueConstraint("tenant_id", "email", name="uq_users_tenant_email"),
         CheckConstraint(
-            "role IN ('Super Admin', 'Admin', 'HR', 'Area Manager', 'IT')",
+            "role IN ('Super Admin', 'Admin', 'HR', 'Area Manager', 'IT', "
+            "'Store', 'Foodmall')",
             name="ck_users_role",
         ),
     )
@@ -267,6 +306,44 @@ class AppSettings(SQLModel, table=True):
     tenant_id: int = Field(default=1, index=True)
     key: str = Field(index=True)
     value: str
+
+
+class RegistrationRequests(SQLModel, table=True):
+    """Self-service sign-ups awaiting email confirmation + admin approval. Kept
+    separate from `users` so existing login/accounts are untouched; an approved
+    request is what creates the real Users row."""
+
+    __tablename__ = "registration_requests"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    tenant_id: int = Field(default=1, index=True)
+    username: str
+    email: str
+    password_hash: str
+    # pending_email -> pending_approval -> approved | rejected
+    status: str = Field(default="pending_email", index=True)
+    email_token: str = Field(index=True)
+    email_verified: bool = Field(default=False)
+    note: Optional[str] = Field(default=None)
+    created_at: datetime = Field(default_factory=utcnow)
+    reviewed_by: Optional[int] = Field(default=None, foreign_key="users.user_id")
+
+
+class Backups(SQLModel, table=True):
+    """A database backup (pg_dump) — one row per run, manual or scheduled."""
+
+    __tablename__ = "backups"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    tenant_id: int = Field(default=1, index=True)
+    filename: str
+    status: str = Field(default="running", index=True)  # running|completed|failed
+    kind: str = Field(default="manual")  # manual|scheduled
+    size_bytes: int = Field(default=0)
+    created_by: Optional[int] = Field(default=None, foreign_key="users.user_id")
+    started_at: datetime = Field(default_factory=utcnow)
+    finished_at: Optional[datetime] = Field(default=None)
+    error: Optional[str] = Field(default=None)
 
 
 class FormFieldConfig(SQLModel, table=True):

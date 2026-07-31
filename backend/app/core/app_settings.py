@@ -23,6 +23,22 @@ DEFAULTS: dict[str, str] = {
     # Optional ISO-8601 end time for the maintenance window (empty = no ETA).
     # The Settings UI turns a chosen duration into this absolute timestamp.
     "maintenance_until": "",
+    # Login-screen marketing block (public). When enabled, shown on login.
+    "marketing_enabled": "false",
+    # Content type: text | image | embed (embed = a video/other-media URL).
+    "marketing_type": "text",
+    # Optional heading shown above the content.
+    "marketing_title": "",
+    # The text body, an image URL, or an embeddable media URL (per type).
+    "marketing_content": "",
+    # Self-service registration: off by default (public site + email not yet
+    # configured). When on, the login screen shows a "Create account" link.
+    "registration_enabled": "false",
+    # Scheduled database backups: off | daily | weekly, at backup_time (HH:MM,
+    # server time), keeping the most recent `backup_retention` scheduled dumps.
+    "backup_schedule": "off",
+    "backup_time": "02:00",
+    "backup_retention": "10",
 }
 
 

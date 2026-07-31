@@ -89,6 +89,42 @@ Owner: Arif Asad Ali.
   tunnel up -d` with `TUNNEL_TOKEN` in `.env`. See `docs/CLOUDFLARE_TUNNEL.md`
   (changelog 0034). Live tunnel still needs the owner's Cloudflare token/hostname.
 
+- **Login marketing block (done):** admin-editable promo area on the login
+  screen (the previously-empty brand-panel space), shown desktop + mobile.
+  `marketing_*` settings + public `GET /api/v1/marketing`; type text/image/embed
+  (embed = a video/media URL). Web renders embeds in an iframe; native shows a
+  link card (conditional import, APK-safe). Admin control in Settings →
+  "Login marketing block" (changelog 0035).
+- **Store & Foodmall roles (done):** store-level logins bound to one store
+  (`store_users`) that see only that store's staff, restricted to **name + brand**
+  (no position/pay/contact) via `GET /api/v1/store/summary`; can request staff be
+  added (notifies Admins). A **foodmall** is a store flagged `is_foodmall` that
+  carries multiple brands (`store_brands`, chosen at store creation); a Foodmall
+  account sees staff grouped by brand. Both roles are blocked from the full
+  employee/cluster endpoints. Created in Users & Roles with a store picker
+  (changelog 0036).
+- **Registration foundation (done):** public sign-up → email confirmation →
+  admin approval, in a separate `registration_requests` table (existing login
+  untouched). Email **sending is a stub** (`core/email.py` logs the confirm link)
+  until the sending domain is configured; approve/reject in the admin
+  "Registrations" screen; `registration_enabled` toggle (default off) in Settings
+  (changelog 0037).
+
+- **Admin hub + activity console (done):** the config/admin tiles (Users & Roles,
+  Registrations, Audit Logs, Form Settings, Settings, Announcements) now live
+  behind one **Admin** tile (`admin_hub_screen`); the main dashboard keeps
+  Employees, Brands & Stores, Status Changes, Notifications. A read-only
+  terminal-styled **Activity Console** streams the audit log (auto-refresh,
+  pause/resume) — never a command shell. `widgets/module_card.dart` is shared
+  (changelog 0038).
+- **Database backups (done):** Super-Admin `pg_dump` backups — "Back up now" with
+  an animated elapsed/indeterminate progress, server-side storage
+  (`./backups` bind mount, gitignored), Super-Admin **download** (audited) +
+  delete, and **scheduled** daily/weekly with retention via an in-app APScheduler
+  (`core/backup.py`, `core/scheduler.py`, `routes/backups.py`, `Backups` table;
+  `backup_schedule`/`backup_time`/`backup_retention` settings). Image adds
+  `postgresql-client`; requires `docker compose build backend` (changelog 0039).
+
 ## Next planned work
 - (No committed backlog.) Candidate follow-ups: hide/filter terminated staff from
   active rosters; relabel/retire the dead admin "Notifications" dashboard tile

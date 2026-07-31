@@ -1,12 +1,16 @@
 import '../models/app_notification.dart';
 import '../models/audit_log.dart';
+import '../models/backup_item.dart';
 import '../models/bulk_result.dart';
 import '../models/cluster.dart';
 import '../models/directory.dart';
 import '../models/employee.dart';
 import '../models/form_field_config.dart';
 import '../models/maintenance_status.dart';
+import '../models/marketing_content.dart';
+import '../models/registration_request.dart';
 import '../models/staff_note.dart';
+import '../models/store_summary.dart';
 import '../models/staff_page.dart';
 import '../models/staff_search_result.dart';
 import '../models/status_log.dart';
@@ -53,10 +57,20 @@ class StaffService {
     return Brand.fromJson(data);
   }
 
-  Future<Store> createStore(int brandId, String name) async {
+  Future<Store> createStore(
+    int brandId,
+    String name, {
+    bool isFoodmall = false,
+    List<int> extraBrandIds = const [],
+  }) async {
     final data = await _api.post(
       '/api/v1/stores',
-      {'brand_id': brandId, 'store_name': name},
+      {
+        'brand_id': brandId,
+        'store_name': name,
+        'is_foodmall': isFoodmall,
+        'extra_brand_ids': extraBrandIds,
+      },
     ) as Map<String, dynamic>;
     return Store.fromJson(data);
   }
@@ -75,10 +89,21 @@ class StaffService {
     return Brand.fromJson(data);
   }
 
-  Future<Store> updateStore(int id, int brandId, String name) async {
+  Future<Store> updateStore(
+    int id,
+    int brandId,
+    String name, {
+    bool isFoodmall = false,
+    List<int> extraBrandIds = const [],
+  }) async {
     final data = await _api.patch(
       '/api/v1/stores/$id',
-      {'brand_id': brandId, 'store_name': name},
+      {
+        'brand_id': brandId,
+        'store_name': name,
+        'is_foodmall': isFoodmall,
+        'extra_brand_ids': extraBrandIds,
+      },
     ) as Map<String, dynamic>;
     return Store.fromJson(data);
   }
@@ -142,6 +167,7 @@ class StaffService {
     String password,
     String role, {
     List<int>? brandIds,
+    int? storeId,
     List<String>? additionalRoles,
   }) async {
     final body = <String, dynamic>{
@@ -151,6 +177,7 @@ class StaffService {
       'role': role,
     };
     if (brandIds != null) body['brand_ids'] = brandIds;
+    if (storeId != null) body['store_id'] = storeId;
     if (additionalRoles != null) body['additional_roles'] = additionalRoles;
     final data =
         await _api.post('/api/v1/users', body) as Map<String, dynamic>;
@@ -164,6 +191,7 @@ class StaffService {
     String? role,
     String? password,
     List<int>? brandIds,
+    int? storeId,
     List<String>? additionalRoles,
   }) async {
     final body = <String, dynamic>{};
@@ -172,6 +200,7 @@ class StaffService {
     if (role != null) body['role'] = role;
     if (password != null) body['password'] = password;
     if (brandIds != null) body['brand_ids'] = brandIds;
+    if (storeId != null) body['store_id'] = storeId;
     if (additionalRoles != null) body['additional_roles'] = additionalRoles;
     final data =
         await _api.patch('/api/v1/users/$userId', body) as Map<String, dynamic>;
@@ -305,6 +334,93 @@ class StaffService {
     );
   }
 
+  // ---- Registration (public + admin approval) ----------------------------
+
+  /// Public: is self-registration currently enabled?
+  Future<bool> registrationEnabled() async {
+    try {
+      final data = await _api.get('/api/v1/register/enabled', auth: false)
+          as Map<String, dynamic>;
+      return (data['enabled'] as bool?) ?? false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Public: submit a sign-up. Returns the neutral status message.
+  Future<String> register({
+    required String username,
+    required String email,
+    required String password,
+    String? note,
+  }) async {
+    final body = <String, dynamic>{
+      'username': username,
+      'email': email,
+      'password': password,
+    };
+    if (note != null && note.trim().isNotEmpty) body['note'] = note.trim();
+    final data =
+        await _api.post('/api/v1/register', body, auth: false)
+            as Map<String, dynamic>;
+    return (data['message'] as String?) ?? 'Registration submitted.';
+  }
+
+  /// Admin: pending/processed sign-ups.
+  Future<List<RegistrationRequest>> registrations() async {
+    final data = await _api.get('/api/v1/registrations') as List;
+    return data
+        .map((e) => RegistrationRequest.fromJson(e as Map<String, dynamic>))
+        .toList(growable: false);
+  }
+
+  /// Admin: approve a sign-up, creating the account with an assigned role.
+  Future<void> approveRegistration(
+    int id, {
+    required String role,
+    int? storeId,
+    List<int>? brandIds,
+  }) async {
+    final body = <String, dynamic>{'role': role};
+    if (storeId != null) body['store_id'] = storeId;
+    if (brandIds != null) body['brand_ids'] = brandIds;
+    await _api.post('/api/v1/registrations/$id/approve', body);
+  }
+
+  /// Admin: reject a sign-up.
+  Future<void> rejectRegistration(int id) async {
+    await _api.post('/api/v1/registrations/$id/reject', const {});
+  }
+
+  /// Admin helper (while email sending is stubbed): hit a request's confirm link
+  /// to mark its email confirmed. `path` is the relative confirm_path.
+  Future<void> confirmRegistrationEmail(String path) async {
+    await _api.get(path, auth: false);
+  }
+
+  // ---- Store / Foodmall portal (restricted) ------------------------------
+
+  /// The calling Store/Foodmall account's own store + staff grouped by brand.
+  Future<StoreSummary> storeSummary() async {
+    final data = await _api.get('/api/v1/store/summary') as Map<String, dynamic>;
+    return StoreSummary.fromJson(data);
+  }
+
+  /// Search staff by name (name only) to request into this store.
+  Future<List<StoreStaffLite>> storeSearchStaff(String name) async {
+    final data = await _api.get(
+      '/api/v1/store/employees/search?name=${Uri.encodeQueryComponent(name)}',
+    ) as List;
+    return data
+        .map((e) => StoreStaffLite.fromJson(e as Map<String, dynamic>))
+        .toList(growable: false);
+  }
+
+  /// Request a staffer be added to this store (notifies Admins).
+  Future<void> storeRequestStaff(int employeeId) async {
+    await _api.post('/api/v1/store/request-staff', {'employee_id': employeeId});
+  }
+
   // ---- Maintenance mode --------------------------------------------------
 
   /// Public maintenance state (no auth needed — used before/after login).
@@ -312,6 +428,13 @@ class StaffService {
     final data = await _api.get('/api/v1/maintenance/status', auth: false)
         as Map<String, dynamic>;
     return MaintenanceStatus.fromJson(data);
+  }
+
+  /// Public login-screen marketing block (no auth needed — shown before login).
+  Future<MarketingContent> marketingContent() async {
+    final data =
+        await _api.get('/api/v1/marketing', auth: false) as Map<String, dynamic>;
+    return MarketingContent.fromJson(data);
   }
 
   // ---- Announcements -----------------------------------------------------
@@ -442,6 +565,50 @@ class StaffService {
     return data
         .map((e) => Brand.fromJson(e as Map<String, dynamic>))
         .toList(growable: false);
+  }
+
+  // ---- Backups (Super Admin) ---------------------------------------------
+
+  Future<List<BackupItem>> backups() async {
+    final data = await _api.get('/api/v1/backups') as List;
+    return data
+        .map((e) => BackupItem.fromJson(e as Map<String, dynamic>))
+        .toList(growable: false);
+  }
+
+  Future<BackupItem> startBackup() async {
+    final data = await _api.post('/api/v1/backups', const {})
+        as Map<String, dynamic>;
+    return BackupItem.fromJson(data);
+  }
+
+  Future<BackupItem> backupStatus(int id) async {
+    final data = await _api.get('/api/v1/backups/$id') as Map<String, dynamic>;
+    return BackupItem.fromJson(data);
+  }
+
+  Future<void> deleteBackup(int id) async {
+    await _api.delete('/api/v1/backups/$id');
+  }
+
+  Future<List<int>> downloadBackup(int id) async {
+    return _api.getBytes('/api/v1/backups/$id/download');
+  }
+
+  Future<BackupSchedule> backupSchedule() async {
+    final data =
+        await _api.get('/api/v1/backups/schedule') as Map<String, dynamic>;
+    return BackupSchedule.fromJson(data);
+  }
+
+  Future<BackupSchedule> setBackupSchedule(
+      String schedule, String time, int retention) async {
+    final data = await _api.put('/api/v1/backups/schedule', {
+      'schedule': schedule,
+      'time': time,
+      'retention': retention,
+    }) as Map<String, dynamic>;
+    return BackupSchedule.fromJson(data);
   }
 
   Future<List<FormFieldConfig>> formConfig(String formKey) async {

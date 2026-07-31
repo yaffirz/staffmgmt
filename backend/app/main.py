@@ -10,28 +10,35 @@ from app.api.routes import (
     announcements,
     audit,
     auth,
+    backups,
     cluster,
     employees,
     form_config,
     lookups,
     maintenance,
+    marketing,
     notes,
     notifications,
+    registration,
     settings as settings_routes,
     status as status_routes,
+    store_portal,
     stores,
     users,
 )
+from app.core import scheduler
 from app.core.database import engine, init_db
 from app.seed import seed_initial_data
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Runs once on startup: create tables, then seed a Super Admin.
+    # Runs once on startup: create tables, seed a Super Admin, start the
+    # backup scheduler.
     init_db()
     with Session(engine) as session:
         seed_initial_data(session)
+    scheduler.start()
     yield
 
 
@@ -66,6 +73,10 @@ app.include_router(status_routes.router)
 app.include_router(audit.router)
 app.include_router(maintenance.router)
 app.include_router(announcements.router)
+app.include_router(marketing.router)
+app.include_router(store_portal.router)
+app.include_router(registration.router)
+app.include_router(backups.router)
 
 
 @app.get("/health", tags=["meta"])
