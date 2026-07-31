@@ -12,6 +12,9 @@ class StoreRead(BaseModel):
     store_id: int
     brand_id: int
     store_name: str
+    is_foodmall: bool = False
+    # Extra brands a foodmall store carries (beyond the primary brand_id).
+    extra_brand_ids: list[int] = []
     model_config = {"from_attributes": True}
 
 
@@ -36,6 +39,8 @@ class BrandCreate(BaseModel):
 class StoreCreate(BaseModel):
     brand_id: int
     store_name: str
+    is_foodmall: bool = False
+    extra_brand_ids: list[int] = []
 
 
 class PositionCreate(BaseModel):
@@ -51,6 +56,8 @@ class BrandUpdate(BaseModel):
 class StoreUpdate(BaseModel):
     brand_id: int
     store_name: str
+    is_foodmall: bool = False
+    extra_brand_ids: list[int] = []
 
 
 class PositionUpdate(BaseModel):

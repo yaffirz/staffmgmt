@@ -7,6 +7,8 @@ class UserAccount {
   final List<String> additionalRoles;
   final List<int> brandIds;
   final List<String> brandNames;
+  final int? storeId; // Store / Foodmall
+  final String? storeName;
 
   const UserAccount({
     required this.userId,
@@ -17,6 +19,8 @@ class UserAccount {
     this.additionalRoles = const [],
     this.brandIds = const [],
     this.brandNames = const [],
+    this.storeId,
+    this.storeName,
   });
 
   factory UserAccount.fromJson(Map<String, dynamic> j) {
@@ -39,6 +43,8 @@ class UserAccount {
       brandNames: ((j['brand_names'] as List?) ?? const [])
           .map((e) => e as String)
           .toList(),
+      storeId: j['store_id'] as int?,
+      storeName: j['store_name'] as String?,
     );
   }
 }

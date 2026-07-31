@@ -9,6 +9,7 @@ class UserCreate(BaseModel):
     password: str
     role: str  # primary role
     brand_ids: Optional[List[int]] = None  # only used for Area Manager
+    store_id: Optional[int] = None  # only used for Store / Foodmall
     additional_roles: Optional[List[str]] = None  # Super Admin only
 
 
@@ -18,6 +19,7 @@ class UserUpdate(BaseModel):
     role: Optional[str] = None
     password: Optional[str] = None
     brand_ids: Optional[List[int]] = None
+    store_id: Optional[int] = None  # only used for Store / Foodmall
     additional_roles: Optional[List[str]] = None  # Super Admin only
 
 
@@ -30,3 +32,5 @@ class UserRead(BaseModel):
     additional_roles: List[str] = []
     brand_ids: List[int] = []
     brand_names: List[str] = []
+    store_id: Optional[int] = None  # Store / Foodmall
+    store_name: Optional[str] = None

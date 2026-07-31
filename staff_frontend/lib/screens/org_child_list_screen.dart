@@ -15,7 +15,15 @@ class _Child {
   final int id;
   final int brandId;
   final String label;
-  const _Child(this.id, this.brandId, this.label);
+  final bool isFoodmall; // stores only
+  final List<int> extraBrandIds; // stores only
+  const _Child(
+    this.id,
+    this.brandId,
+    this.label, {
+    this.isFoodmall = false,
+    this.extraBrandIds = const [],
+  });
 }
 
 /// Lists stores or positions (both are just a label tied to a brand).
@@ -63,7 +71,8 @@ class _OrgChildListScreenState extends State<OrgChildListScreen> {
       final List<_Child> items;
       if (_isStore) {
         items = (await svc.stores())
-            .map((s) => _Child(s.id, s.brandId, s.name))
+            .map((s) => _Child(s.id, s.brandId, s.name,
+                isFoodmall: s.isFoodmall, extraBrandIds: s.extraBrandIds))
             .toList();
       } else {
         items = (await svc.positions())
@@ -102,6 +111,8 @@ class _OrgChildListScreenState extends State<OrgChildListScreen> {
     final ctrl = TextEditingController();
     int? brandId = _filterBrandId ?? _brands.first.id;
     String? errorText;
+    bool isFoodmall = false;
+    final Set<int> extraBrandIds = {};
 
     final created = await showDialog<bool>(
       context: context,
@@ -120,7 +131,9 @@ class _OrgChildListScreenState extends State<OrgChildListScreen> {
             try {
               final svc = ctx.read<StaffService>();
               if (_isStore) {
-                await svc.createStore(brandId!, name);
+                await svc.createStore(brandId!, name,
+                    isFoodmall: isFoodmall,
+                    extraBrandIds: isFoodmall ? extraBrandIds.toList() : const []);
               } else {
                 await svc.createPosition(brandId!, name);
               }
@@ -134,30 +147,43 @@ class _OrgChildListScreenState extends State<OrgChildListScreen> {
 
           return AlertDialog(
             title: Text('Add $_titleSingular'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                DropdownButtonFormField<int>(
-                  initialValue: brandId,
-                  isExpanded: true,
-                  decoration: const InputDecoration(labelText: 'Brand'),
-                  items: _brands
-                      .map((b) =>
-                          DropdownMenuItem(value: b.id, child: Text(b.name)))
-                      .toList(),
-                  onChanged: (v) => setLocal(() => brandId = v),
+            content: SizedBox(
+              width: 380,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    DropdownButtonFormField<int>(
+                      initialValue: brandId,
+                      isExpanded: true,
+                      decoration: const InputDecoration(labelText: 'Brand'),
+                      items: _brands
+                          .map((b) => DropdownMenuItem(
+                              value: b.id, child: Text(b.name)))
+                          .toList(),
+                      onChanged: (v) => setLocal(() => brandId = v),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: ctrl,
+                      autofocus: true,
+                      decoration: InputDecoration(
+                        labelText: _fieldLabel,
+                        errorText: errorText,
+                      ),
+                      onSubmitted: (_) => submit(),
+                    ),
+                    if (_isStore)
+                      _foodmallSection(
+                        brandId,
+                        isFoodmall,
+                        extraBrandIds,
+                        (v) => setLocal(() => isFoodmall = v),
+                        setLocal,
+                      ),
+                  ],
                 ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: ctrl,
-                  autofocus: true,
-                  decoration: InputDecoration(
-                    labelText: _fieldLabel,
-                    errorText: errorText,
-                  ),
-                  onSubmitted: (_) => submit(),
-                ),
-              ],
+              ),
             ),
             actions: [
               TextButton(
@@ -177,6 +203,8 @@ class _OrgChildListScreenState extends State<OrgChildListScreen> {
     final ctrl = TextEditingController(text: item.label);
     int? brandId = item.brandId;
     String? errorText;
+    bool isFoodmall = item.isFoodmall;
+    final Set<int> extraBrandIds = {...item.extraBrandIds};
 
     final saved = await showDialog<bool>(
       context: context,
@@ -195,7 +223,9 @@ class _OrgChildListScreenState extends State<OrgChildListScreen> {
             try {
               final svc = ctx.read<StaffService>();
               if (_isStore) {
-                await svc.updateStore(item.id, brandId!, name);
+                await svc.updateStore(item.id, brandId!, name,
+                    isFoodmall: isFoodmall,
+                    extraBrandIds: isFoodmall ? extraBrandIds.toList() : const []);
               } else {
                 await svc.updatePosition(item.id, brandId!, name);
               }
@@ -209,30 +239,43 @@ class _OrgChildListScreenState extends State<OrgChildListScreen> {
 
           return AlertDialog(
             title: Text('Edit $_titleSingular'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                DropdownButtonFormField<int>(
-                  initialValue: brandId,
-                  isExpanded: true,
-                  decoration: const InputDecoration(labelText: 'Brand'),
-                  items: _brands
-                      .map((b) =>
-                          DropdownMenuItem(value: b.id, child: Text(b.name)))
-                      .toList(),
-                  onChanged: (v) => setLocal(() => brandId = v),
+            content: SizedBox(
+              width: 380,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    DropdownButtonFormField<int>(
+                      initialValue: brandId,
+                      isExpanded: true,
+                      decoration: const InputDecoration(labelText: 'Brand'),
+                      items: _brands
+                          .map((b) => DropdownMenuItem(
+                              value: b.id, child: Text(b.name)))
+                          .toList(),
+                      onChanged: (v) => setLocal(() => brandId = v),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: ctrl,
+                      autofocus: true,
+                      decoration: InputDecoration(
+                        labelText: _fieldLabel,
+                        errorText: errorText,
+                      ),
+                      onSubmitted: (_) => submit(),
+                    ),
+                    if (_isStore)
+                      _foodmallSection(
+                        brandId,
+                        isFoodmall,
+                        extraBrandIds,
+                        (v) => setLocal(() => isFoodmall = v),
+                        setLocal,
+                      ),
+                  ],
                 ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: ctrl,
-                  autofocus: true,
-                  decoration: InputDecoration(
-                    labelText: _fieldLabel,
-                    errorText: errorText,
-                  ),
-                  onSubmitted: (_) => submit(),
-                ),
-              ],
+              ),
             ),
             actions: [
               TextButton(
@@ -246,6 +289,66 @@ class _OrgChildListScreenState extends State<OrgChildListScreen> {
       ),
     );
     if (saved == true) _load();
+  }
+
+  /// Foodmall checkbox + additional-brand picker, shown in the store dialogs.
+  Widget _foodmallSection(
+    int? primaryId,
+    bool isFoodmall,
+    Set<int> extraBrandIds,
+    void Function(bool) onFoodmallChanged,
+    void Function(void Function()) setLocal,
+  ) {
+    final others = _brands.where((b) => b.id != primaryId).toList();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        CheckboxListTile(
+          contentPadding: EdgeInsets.zero,
+          controlAffinity: ListTileControlAffinity.leading,
+          title: const Text('This is a foodmall'),
+          subtitle: const Text('Carries more than one brand'),
+          value: isFoodmall,
+          onChanged: (v) => onFoodmallChanged(v ?? false),
+        ),
+        if (isFoodmall) ...[
+          const Align(
+            alignment: Alignment.centerLeft,
+            child: Padding(
+              padding: EdgeInsets.only(top: 2, bottom: 6),
+              child: Text('Additional brands at this foodmall',
+                  style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600)),
+            ),
+          ),
+          if (others.isEmpty)
+            const Align(
+              alignment: Alignment.centerLeft,
+              child: Text('Add more brands first.',
+                  style: TextStyle(fontSize: 12)),
+            )
+          else
+            Wrap(
+              spacing: 8,
+              runSpacing: 4,
+              children: [
+                for (final b in others)
+                  FilterChip(
+                    label: Text(b.name),
+                    selected: extraBrandIds.contains(b.id),
+                    onSelected: (on) => setLocal(() {
+                      if (on) {
+                        extraBrandIds.add(b.id);
+                      } else {
+                        extraBrandIds.remove(b.id);
+                      }
+                    }),
+                  ),
+              ],
+            ),
+        ],
+      ],
+    );
   }
 
   String _labelById(int id) {

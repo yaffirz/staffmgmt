@@ -9,7 +9,15 @@ import '../state/auth_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_scaffold.dart';
 
-const _roles = ['Super Admin', 'Admin', 'HR', 'Area Manager', 'IT'];
+const _roles = [
+  'Super Admin',
+  'Admin',
+  'HR',
+  'Area Manager',
+  'IT',
+  'Store',
+  'Foodmall',
+];
 
 class UsersScreen extends StatefulWidget {
   const UsersScreen({super.key});
@@ -21,6 +29,7 @@ class UsersScreen extends StatefulWidget {
 class _UsersScreenState extends State<UsersScreen> {
   List<UserAccount> _users = [];
   List<Brand> _brands = [];
+  List<Store> _stores = [];
   bool _loading = true;
   String? _error;
   int? _myId;
@@ -42,11 +51,13 @@ class _UsersScreenState extends State<UsersScreen> {
     });
     try {
       final svc = context.read<StaffService>();
-      final results = await Future.wait([svc.users(), svc.brands()]);
+      final results =
+          await Future.wait([svc.users(), svc.brands(), svc.stores()]);
       if (!mounted) return;
       setState(() {
         _users = results[0] as List<UserAccount>;
         _brands = results[1] as List<Brand>;
+        _stores = results[2] as List<Store>;
         _loading = false;
       });
     } catch (_) {
@@ -120,8 +131,10 @@ class _UsersScreenState extends State<UsersScreen> {
     final confirmCtrl = TextEditingController();
     String role = editing?.role ?? 'Area Manager';
     List<int> brandIds = [...(editing?.brandIds ?? const [])];
+    int? storeId = editing?.storeId;
     List<String> additionalRoles = [...(editing?.additionalRoles ?? const [])];
     String? errorText;
+    bool isStoreRole(String r) => r == 'Store' || r == 'Foodmall';
 
     final saved = await showDialog<bool>(
       context: context,
@@ -152,6 +165,10 @@ class _UsersScreenState extends State<UsersScreen> {
                 return;
               }
             }
+            if (isStoreRole(role) && storeId == null) {
+              setLocal(() => errorText = 'Choose a store for this account');
+              return;
+            }
             try {
               final svc = ctx.read<StaffService>();
               // Only a Super Admin may set additional roles; exclude the primary.
@@ -166,6 +183,7 @@ class _UsersScreenState extends State<UsersScreen> {
                   role: (!isSelf && role != editing.role) ? role : null,
                   password: p.isNotEmpty ? p : null,
                   brandIds: role == 'Area Manager' ? brandIds : null,
+                  storeId: isStoreRole(role) ? storeId : null,
                   additionalRoles: extraRoles,
                 );
               } else {
@@ -175,6 +193,7 @@ class _UsersScreenState extends State<UsersScreen> {
                   p,
                   role,
                   brandIds: role == 'Area Manager' ? brandIds : null,
+                  storeId: isStoreRole(role) ? storeId : null,
                   additionalRoles: extraRoles,
                 );
               }
@@ -239,8 +258,62 @@ class _UsersScreenState extends State<UsersScreen> {
                           .toList(),
                       onChanged: isSelf
                           ? null
-                          : (v) => setLocal(() => role = v ?? role),
+                          : (v) => setLocal(() {
+                                role = v ?? role;
+                                // A Foodmall account needs a foodmall store;
+                                // drop a now-invalid selection.
+                                if (role == 'Foodmall' &&
+                                    storeId != null &&
+                                    !_stores.any((s) =>
+                                        s.id == storeId && s.isFoodmall)) {
+                                  storeId = null;
+                                }
+                              }),
                     ),
+                    if (isStoreRole(role)) ...[
+                      const SizedBox(height: 16),
+                      Builder(builder: (ctx) {
+                        final foodmallOnly = role == 'Foodmall';
+                        final opts = foodmallOnly
+                            ? _stores.where((s) => s.isFoodmall).toList()
+                            : _stores;
+                        return DropdownButtonFormField<int>(
+                          key: ValueKey('store-picker-$role'),
+                          initialValue: opts.any((s) => s.id == storeId)
+                              ? storeId
+                              : null,
+                          isExpanded: true,
+                          decoration: InputDecoration(
+                            labelText: foodmallOnly ? 'Foodmall store' : 'Store',
+                            helperText: foodmallOnly
+                                ? 'Only stores marked as a foodmall are shown'
+                                : 'The store this account manages',
+                          ),
+                          items: opts
+                              .map((s) => DropdownMenuItem(
+                                    value: s.id,
+                                    child: Text(s.name,
+                                        overflow: TextOverflow.ellipsis),
+                                  ))
+                              .toList(),
+                          onChanged: (v) => setLocal(() => storeId = v),
+                        );
+                      }),
+                      if (role == 'Foodmall' &&
+                          !_stores.any((s) => s.isFoodmall))
+                        Padding(
+                          padding: const EdgeInsets.only(top: 6),
+                          child: Text(
+                            'No foodmall stores yet — mark a store as a '
+                            'foodmall in Brands & Stores.',
+                            style: TextStyle(
+                                fontSize: 11.5,
+                                color: Theme.of(ctx)
+                                    .colorScheme
+                                    .onSurfaceVariant),
+                          ),
+                        ),
+                    ],
                     if (role == 'Area Manager') ...[
                       const SizedBox(height: 16),
                       Align(
@@ -588,6 +661,23 @@ class _UsersScreenState extends State<UsersScreen> {
                                             ))
                                         .toList(),
                                   ),
+                          ],
+                          if (u.role == 'Store' || u.role == 'Foodmall') ...[
+                            const SizedBox(height: 6),
+                            Text(
+                              u.storeName == null
+                                  ? 'No store assigned'
+                                  : 'Store: ${u.storeName}',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontStyle: u.storeName == null
+                                    ? FontStyle.italic
+                                    : FontStyle.normal,
+                                color: u.storeName == null
+                                    ? cs.error
+                                    : cs.onSurfaceVariant,
+                              ),
+                            ),
                           ],
                         ],
                       ),

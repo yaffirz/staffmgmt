@@ -11,6 +11,8 @@ from app.models.models import (
     AreaManagerStores,
     AuditLogs,
     Brands,
+    StoreUsers,
+    Stores,
     UserRoles,
     Users,
 )
@@ -22,6 +24,8 @@ router = APIRouter(prefix="/api/v1/users", tags=["users"])
 # Creating/editing accounts and AM brand scope — Admins and Super Admins only.
 MANAGE_ROLES = ("Super Admin", "Admin")
 ALLOWED_ROLES = set(MODEL_ALLOWED_ROLES)
+# Store-level roles bound to a single store.
+STORE_ROLES = {"Store", "Foodmall"}
 
 
 def _additional_roles_of(session: Session, user_id: int) -> list[str]:
@@ -113,6 +117,44 @@ def _set_brands(
     session.commit()
 
 
+def _set_store_link(
+    session: Session, user: Users, store_id: int, tenant: int
+) -> None:
+    """Bind a Store/Foodmall account to a single store (validated in-tenant).
+    Foodmall accounts must point at a foodmall store."""
+    store = session.get(Stores, store_id)
+    if store is None or store.tenant_id != tenant:
+        raise HTTPException(status_code=422, detail="Unknown store.")
+    if user.role == "Foodmall" and not store.is_foodmall:
+        raise HTTPException(
+            status_code=422,
+            detail="A Foodmall account must be linked to a foodmall store.",
+        )
+    for existing in session.exec(
+        select(StoreUsers).where(StoreUsers.user_id == user.user_id)
+    ).all():
+        session.delete(existing)
+    session.add(StoreUsers(user_id=user.user_id, store_id=store_id))
+    session.commit()
+
+
+def _remove_store_link(session: Session, user_id: int) -> None:
+    for link in session.exec(
+        select(StoreUsers).where(StoreUsers.user_id == user_id)
+    ).all():
+        session.delete(link)
+
+
+def _store_of(session: Session, user: Users) -> tuple[int | None, str | None]:
+    link = session.exec(
+        select(StoreUsers).where(StoreUsers.user_id == user.user_id)
+    ).first()
+    if link is None:
+        return None, None
+    store = session.get(Stores, link.store_id)
+    return link.store_id, (store.store_name if store else None)
+
+
 def _brands_of(session: Session, user: Users) -> tuple[list[int], list[str]]:
     m = session.exec(
         select(AreaManagers).where(AreaManagers.user_id == user.user_id)
@@ -137,6 +179,9 @@ def _read(session: Session, user: Users) -> UserRead:
     ids, names = ([], [])
     if user.role == "Area Manager":
         ids, names = _brands_of(session, user)
+    store_id, store_name = (None, None)
+    if user.role in STORE_ROLES:
+        store_id, store_name = _store_of(session, user)
     additional = _additional_roles_of(session, user.user_id)
     return UserRead(
         user_id=user.user_id,
@@ -147,6 +192,8 @@ def _read(session: Session, user: Users) -> UserRead:
         additional_roles=additional,
         brand_ids=ids,
         brand_names=names,
+        store_id=store_id,
+        store_name=store_name,
     )
 
 
@@ -188,6 +235,22 @@ def create_user(
         raise HTTPException(status_code=422, detail="Unknown role.")
 
     tenant = current.tenant_id
+    # Validate a Store/Foodmall store BEFORE creating the row, so a bad store
+    # never leaves an orphaned account behind.
+    if payload.role in STORE_ROLES:
+        if payload.store_id is None:
+            raise HTTPException(
+                status_code=422,
+                detail="A store is required for Store/Foodmall accounts.",
+            )
+        _store = session.get(Stores, payload.store_id)
+        if _store is None or _store.tenant_id != tenant:
+            raise HTTPException(status_code=422, detail="Unknown store.")
+        if payload.role == "Foodmall" and not _store.is_foodmall:
+            raise HTTPException(
+                status_code=422,
+                detail="A Foodmall account must be linked to a foodmall store.",
+            )
     if session.exec(
         select(Users)
         .where(Users.tenant_id == tenant)
@@ -217,6 +280,14 @@ def create_user(
     if user.role == "Area Manager":
         m = _manager_for(session, user)
         _set_brands(session, m.manager_id, payload.brand_ids or [], tenant)
+
+    if user.role in STORE_ROLES:
+        if payload.store_id is None:
+            raise HTTPException(
+                status_code=422,
+                detail="A store is required for Store/Foodmall accounts.",
+            )
+        _set_store_link(session, user, payload.store_id, tenant)
 
     if payload.additional_roles is not None:
         if not current.has_role("Super Admin"):
@@ -295,12 +366,15 @@ def update_user(
         if payload.role not in ALLOWED_ROLES:
             raise HTTPException(status_code=422, detail="Unknown role.")
         was_am = user.role == "Area Manager"
+        was_store = user.role in STORE_ROLES
         user.role = payload.role
         changes["role"] = payload.role
         if payload.role == "Area Manager":
             _manager_for(session, user)
         elif was_am:
             _remove_area_manager(session, user.user_id)
+        if was_store and payload.role not in STORE_ROLES:
+            _remove_store_link(session, user.user_id)
 
     if payload.password is not None:
         if len(payload.password) < 6:
@@ -321,6 +395,11 @@ def update_user(
         m = _manager_for(session, user)
         _set_brands(session, m.manager_id, payload.brand_ids, tenant)
         changes["brands"] = payload.brand_ids
+
+    # Store link (Store/Foodmall). Apply after any role change.
+    if payload.store_id is not None and user.role in STORE_ROLES:
+        _set_store_link(session, user, payload.store_id, tenant)
+        changes["store_id"] = payload.store_id
 
     # Additional roles (multi-role) — Super Admin only.
     if payload.additional_roles is not None:
@@ -365,6 +444,8 @@ def delete_user(
     snap = {"username": user.username, "email": user.email, "role": user.role}
     if user.role == "Area Manager":
         _remove_area_manager(session, user.user_id)
+    if user.role in STORE_ROLES:
+        _remove_store_link(session, user.user_id)
     for r in session.exec(
         select(UserRoles).where(UserRoles.user_id == user.user_id)
     ).all():

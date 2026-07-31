@@ -14,7 +14,9 @@ from app.models.models import (
     Employees,
     EmployeeAdditionalStores,
     Positions,
+    StoreBrands,
     Stores,
+    StoreUsers,
 )
 from app.schemas.auth import CurrentUser
 from app.schemas.lookups import (
@@ -36,6 +38,48 @@ router = APIRouter(prefix="/api/v1", tags=["lookups"])
 
 # Org structure (brands/stores/positions) is managed by these roles.
 ORG_ROLES = ("Super Admin", "Admin")
+
+
+def _extra_brand_ids(session: Session, store_id: int) -> list[int]:
+    return [
+        sb.brand_id
+        for sb in session.exec(
+            select(StoreBrands).where(StoreBrands.store_id == store_id)
+        ).all()
+    ]
+
+
+def _store_read(session: Session, store: Stores) -> StoreRead:
+    return StoreRead(
+        store_id=store.store_id,
+        brand_id=store.brand_id,
+        store_name=store.store_name,
+        is_foodmall=store.is_foodmall,
+        extra_brand_ids=_extra_brand_ids(session, store.store_id),
+    )
+
+
+def _set_store_brands(
+    session: Session, store: Stores, brand_ids: list[int], tenant: int
+) -> None:
+    """Replace a foodmall store's extra brands (validated, in-tenant, excluding
+    the primary brand). Clears all extras when the store isn't a foodmall."""
+    clean: list[int] = []
+    if store.is_foodmall:
+        for bid in brand_ids:
+            if bid == store.brand_id or bid in clean:
+                continue
+            b = session.get(Brands, bid)
+            if b is None or b.tenant_id != tenant:
+                raise HTTPException(status_code=422, detail=f"Unknown brand id {bid}.")
+            clean.append(bid)
+    for existing in session.exec(
+        select(StoreBrands).where(StoreBrands.store_id == store.store_id)
+    ).all():
+        session.delete(existing)
+    for bid in clean:
+        session.add(StoreBrands(store_id=store.store_id, brand_id=bid))
+    session.commit()
 
 
 # ---- Read (any authenticated user) ---------------------------------------
@@ -60,7 +104,8 @@ def list_stores(
     query = select(Stores).where(Stores.tenant_id == current.tenant_id)
     if brand_id is not None:
         query = query.where(Stores.brand_id == brand_id)
-    return session.exec(query.order_by(Stores.store_name)).all()
+    stores = session.exec(query.order_by(Stores.store_name)).all()
+    return [_store_read(session, s) for s in stores]
 
 
 @router.get("/positions", response_model=list[PositionRead])
@@ -131,12 +176,16 @@ def create_store(
             status_code=409, detail=f"Store '{name}' already exists for that brand."
         )
     store = Stores(
-        tenant_id=current.tenant_id, brand_id=payload.brand_id, store_name=name
+        tenant_id=current.tenant_id,
+        brand_id=payload.brand_id,
+        store_name=name,
+        is_foodmall=payload.is_foodmall,
     )
     session.add(store)
     session.commit()
     session.refresh(store)
-    return store
+    _set_store_brands(session, store, payload.extra_brand_ids, current.tenant_id)
+    return _store_read(session, store)
 
 
 @router.post(
@@ -243,12 +292,18 @@ def update_store(
         raise HTTPException(
             status_code=409, detail=f"Store '{name}' already exists for that brand."
         )
-    old = {"brand_id": store.brand_id, "store_name": store.store_name}
+    old = {
+        "brand_id": store.brand_id,
+        "store_name": store.store_name,
+        "is_foodmall": store.is_foodmall,
+    }
     store.brand_id = payload.brand_id
     store.store_name = name
+    store.is_foodmall = payload.is_foodmall
     session.add(store)
     session.commit()
     session.refresh(store)
+    _set_store_brands(session, store, payload.extra_brand_ids, current.tenant_id)
     session.add(
         AuditLogs(
             user_id=current.user_id,
@@ -256,11 +311,16 @@ def update_store(
             affected_table="stores",
             record_id=str(store.store_id),
             old_value=old,
-            new_value={"brand_id": store.brand_id, "store_name": store.store_name},
+            new_value={
+                "brand_id": store.brand_id,
+                "store_name": store.store_name,
+                "is_foodmall": store.is_foodmall,
+                "extra_brand_ids": _extra_brand_ids(session, store.store_id),
+            },
         )
     )
     session.commit()
-    return store
+    return _store_read(session, store)
 
 
 @router.patch("/positions/{position_id}", response_model=PositionRead)
@@ -392,7 +452,23 @@ def delete_store(
             detail=f"Cannot delete '{store.store_name}' — "
             f"{total} employee assignment(s) reference it.",
         )
+    n_accounts = len(
+        session.exec(
+            select(StoreUsers).where(StoreUsers.store_id == store_id)
+        ).all()
+    )
+    if n_accounts:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Cannot delete '{store.store_name}' — "
+            f"{n_accounts} Store/Foodmall account(s) are bound to it.",
+        )
     snap = {"brand_id": store.brand_id, "store_name": store.store_name}
+    # Foodmall brand links have no employee references — safe to drop.
+    for sb in session.exec(
+        select(StoreBrands).where(StoreBrands.store_id == store_id)
+    ).all():
+        session.delete(sb)
     session.delete(store)
     session.commit()
     _audit_delete(session, current, "stores", store_id, snap)
