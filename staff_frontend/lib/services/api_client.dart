@@ -46,6 +46,15 @@ class ApiClient {
     return _process(res);
   }
 
+  /// Fetch raw bytes (for file downloads, which aren't JSON).
+  Future<List<int>> getBytes(String path, {bool auth = true}) async {
+    final res =
+        await http.get(await _uri(path), headers: await _headers(auth: auth));
+    if (res.statusCode >= 200 && res.statusCode < 300) return res.bodyBytes;
+    _process(res); // throws ApiException with the backend detail
+    return const [];
+  }
+
   Future<dynamic> post(
     String path,
     Map<String, dynamic> body, {

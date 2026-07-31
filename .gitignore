@@ -27,3 +27,9 @@ venv/
 Thumbs.db
 .idea/
 .vscode/
+
+# Database backups (contain all data — never commit)
+/backups/
+
+# Office lock/temp files
+~$*

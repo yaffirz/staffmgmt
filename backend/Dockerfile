@@ -6,9 +6,9 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /code
 
-# System deps for psycopg2 (libpq) + build tools.
+# System deps for psycopg2 (libpq) + build tools + pg_dump (backups).
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends gcc libpq-dev \
+    && apt-get install -y --no-install-recommends gcc libpq-dev postgresql-client \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .

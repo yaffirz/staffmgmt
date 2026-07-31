@@ -36,6 +36,8 @@ services:
       DEFAULT_TENANT_ID: ${DEFAULT_TENANT_ID:-1}
       # Where the backend looks for a built Flutter web bundle to serve at "/".
       WEB_DIR: /code/web
+      # Where database backups (pg_dump) are written.
+      BACKUP_DIR: /code/backups
     ports:
       - "8000:8000"
     # For local dev: live-reload when you edit code on the host.
@@ -44,6 +46,8 @@ services:
       # Serve the built web UI same-origin from :8000 (run `flutter build web`
       # first). Read-only; if the folder is empty the backend just skips it.
       - ./staff_frontend/build/web:/code/web:ro
+      # Database backups persist on the host (contain all data — keep private).
+      - ./backups:/code/backups
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
   # Cloudflare tunnel — publishes the app on your Cloudflare hostname without
