@@ -39,6 +39,9 @@ DEFAULTS: dict[str, str] = {
     "backup_schedule": "off",
     "backup_time": "02:00",
     "backup_retention": "10",
+    # Show the "Get the Android app" download to signed-in users (when an APK
+    # has been published to APP_DIST_DIR).
+    "app_download_enabled": "true",
 }
 
 

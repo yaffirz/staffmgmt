@@ -33,3 +33,6 @@ Thumbs.db
 
 # Office lock/temp files
 ~$*
+
+# Published Android APK (build artifact — not committed)
+/public/

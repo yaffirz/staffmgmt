@@ -125,6 +125,13 @@ Owner: Arif Asad Ali.
   `backup_schedule`/`backup_time`/`backup_retention` settings). Image adds
   `postgresql-client`; requires `docker compose build backend` (changelog 0039).
 
+- **In-app APK download (done):** signed-in users get a "Get the Android app"
+  card on the dashboard (web only) that downloads the latest published APK.
+  Login-gated `GET /api/v1/app/{info,download}`; the APK is served read-only from
+  `./public` (host mount, gitignored) — publish with `scripts/publish-apk.sh`
+  after `flutter build apk`. `app_download_enabled` toggle in Settings
+  (changelog 0040).
+
 ## Next planned work
 - (No committed backlog.) Candidate follow-ups: hide/filter terminated staff from
   active rosters; relabel/retire the dead admin "Notifications" dashboard tile

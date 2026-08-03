@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../models/auth_user.dart';
 import '../state/auth_provider.dart';
+import '../widgets/app_download_banner.dart';
 import '../widgets/app_logo.dart';
 import '../widgets/app_scaffold.dart';
 import '../widgets/module_card.dart';
@@ -137,6 +138,7 @@ class _DashboardBody extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 24),
+              const AppDownloadBanner(),
               Wrap(
                 spacing: 16,
                 runSpacing: 16,

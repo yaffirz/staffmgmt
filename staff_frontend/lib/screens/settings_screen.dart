@@ -23,6 +23,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   static const _mktTitleKey = 'marketing_title';
   static const _mktContentKey = 'marketing_content';
   static const _registrationKey = 'registration_enabled';
+  static const _appDownloadKey = 'app_download_enabled';
 
   // Marketing content types (value -> label).
   static const _mktTypes = <String, String>{
@@ -64,6 +65,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   // Registration.
   bool _registrationOn = false;
 
+  // Android app download.
+  bool _appDownloadOn = true;
+
   @override
   void initState() {
     super.initState();
@@ -96,6 +100,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         svc.getSetting(_mktTitleKey),
         svc.getSetting(_mktContentKey),
         svc.getSetting(_registrationKey),
+        svc.getSetting(_appDownloadKey),
       ]);
       if (!mounted) return;
       final untilRaw = results[4];
@@ -112,6 +117,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _mktTitleController.text = results[7];
         _mktContentController.text = results[8];
         _registrationOn = results[9].toLowerCase() == 'true';
+        _appDownloadOn = results[10].toLowerCase() == 'true';
         _loading = false;
       });
     } catch (_) {
@@ -212,6 +218,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
       );
     }
   }
+
+  Future<void> _setAppDownload(bool value) => _setBoolSetting(
+        _appDownloadKey,
+        value,
+        (v) => _appDownloadOn = v,
+        (on) => on
+            ? 'The Android app download is shown to signed-in users.'
+            : 'The Android app download is hidden.',
+      );
 
   Future<void> _setRegistration(bool value) => _setBoolSetting(
         _registrationKey,
@@ -329,6 +344,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     'Registrations. (Email sending is not yet configured.)'),
                 value: _registrationOn,
                 onChanged: _saving ? null : _setRegistration,
+              )),
+              const SizedBox(height: 24),
+              _sectionTitle('Android app'),
+              const SizedBox(height: 12),
+              _card(SwitchListTile(
+                title: const Text('Show the app download to signed-in users'),
+                subtitle: const Text(
+                    'A "Get the Android app" card on the dashboard (web), '
+                    'serving the latest published APK. Publish a build to '
+                    './public first.'),
+                value: _appDownloadOn,
+                onChanged: _saving ? null : _setAppDownload,
               )),
             ],
           ),

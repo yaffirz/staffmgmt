@@ -1,4 +1,5 @@
 import '../models/app_notification.dart';
+import '../models/app_info.dart';
 import '../models/audit_log.dart';
 import '../models/backup_item.dart';
 import '../models/bulk_result.dart';
@@ -565,6 +566,17 @@ class StaffService {
     return data
         .map((e) => Brand.fromJson(e as Map<String, dynamic>))
         .toList(growable: false);
+  }
+
+  // ---- Android app download (any signed-in user) -------------------------
+
+  Future<AppInfo> appInfo() async {
+    final data = await _api.get('/api/v1/app/info') as Map<String, dynamic>;
+    return AppInfo.fromJson(data);
+  }
+
+  Future<List<int>> downloadApk() async {
+    return _api.getBytes('/api/v1/app/download');
   }
 
   // ---- Backups (Super Admin) ---------------------------------------------

@@ -8,6 +8,7 @@ from sqlmodel import Session
 
 from app.api.routes import (
     announcements,
+    app_dist,
     audit,
     auth,
     backups,
@@ -77,6 +78,7 @@ app.include_router(marketing.router)
 app.include_router(store_portal.router)
 app.include_router(registration.router)
 app.include_router(backups.router)
+app.include_router(app_dist.router)
 
 
 @app.get("/health", tags=["meta"])

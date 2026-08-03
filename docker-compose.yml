@@ -38,6 +38,8 @@ services:
       WEB_DIR: /code/web
       # Where database backups (pg_dump) are written.
       BACKUP_DIR: /code/backups
+      # Where the published Android APK is served from (see docs).
+      APP_DIST_DIR: /code/public
     ports:
       - "8000:8000"
     # For local dev: live-reload when you edit code on the host.
@@ -48,6 +50,8 @@ services:
       - ./staff_frontend/build/web:/code/web:ro
       # Database backups persist on the host (contain all data — keep private).
       - ./backups:/code/backups
+      # Published Android APK, served read-only to signed-in users.
+      - ./public:/code/public:ro
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
   # Cloudflare tunnel — publishes the app on your Cloudflare hostname without
