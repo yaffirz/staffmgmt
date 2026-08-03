@@ -92,6 +92,21 @@ def health():
 # API — ideal behind a single Cloudflare tunnel hostname (no CORS, one link).
 # Mounted LAST so it never shadows /health, /docs, or the /api/v1 routes.
 # Absent in pure-API/dev setups, so this is a no-op there.
+
+
+class _AppStatic(StaticFiles):
+    """Serve the built web app, but mark the mutable app-shell files
+    (index.html + the Dart/JS/JSON that change every `flutter build web`) as
+    no-store, so a CDN (Cloudflare) never serves a stale build after a deploy.
+    Binary assets (wasm, fonts, images) keep default caching."""
+
+    def file_response(self, full_path, stat_result, scope, status_code=200):
+        resp = super().file_response(full_path, stat_result, scope, status_code)
+        if str(full_path).endswith((".html", ".js", ".json")):
+            resp.headers["Cache-Control"] = "no-store"
+        return resp
+
+
 WEB_DIR = os.getenv("WEB_DIR", "/code/web")
 if os.path.isfile(os.path.join(WEB_DIR, "index.html")):
-    app.mount("/", StaticFiles(directory=WEB_DIR, html=True), name="web")
+    app.mount("/", _AppStatic(directory=WEB_DIR, html=True), name="web")
