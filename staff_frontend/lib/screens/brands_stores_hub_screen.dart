@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_scaffold.dart';
 import 'brands_list_screen.dart';
+import 'countries_list_screen.dart';
 import 'org_child_list_screen.dart';
 
 class BrandsStoresHubScreen extends StatelessWidget {
@@ -51,6 +52,16 @@ class BrandsStoresHubScreen extends StatelessWidget {
                       builder: (_) =>
                           const OrgChildListScreen(kind: OrgChildKind.position),
                     ),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                _HubTile(
+                  icon: Icons.public_outlined,
+                  title: 'Countries',
+                  subtitle: 'Countries offered on the staff form',
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                        builder: (_) => const CountriesListScreen()),
                   ),
                 ),
               ],

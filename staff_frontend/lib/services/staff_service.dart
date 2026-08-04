@@ -52,6 +52,23 @@ class StaffService {
         .toList(growable: false);
   }
 
+  Future<Country> createCountry(String name) async {
+    final data = await _api.post('/api/v1/countries', {'country_name': name})
+        as Map<String, dynamic>;
+    return Country.fromJson(data);
+  }
+
+  Future<Country> updateCountry(int id, String name) async {
+    final data = await _api
+        .patch('/api/v1/countries/$id', {'country_name': name})
+        as Map<String, dynamic>;
+    return Country.fromJson(data);
+  }
+
+  Future<void> deleteCountry(int id) async {
+    await _api.delete('/api/v1/countries/$id');
+  }
+
   Future<Brand> createBrand(String name) async {
     final data = await _api.post('/api/v1/brands', {'brand_name': name})
         as Map<String, dynamic>;

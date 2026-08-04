@@ -95,6 +95,11 @@ custom logo/branding, **single-origin serving + Cloudflare tunnel**.
   `app_download_enabled` toggle.
 - **0041 — No-store web shell (UNCOMMITTED):** backend sends `Cache-Control:
   no-store` on `.html/.js/.json` so Cloudflare stops serving stale builds.
+- **0043 — Country management:** add/edit/delete countries under **Brands &
+  Stores → Countries** (Admin / Super Admin), feeding the Country field on the
+  staff new-hire form (which was already wired to `GET /api/v1/countries`).
+  Guarded delete (blocked while employees reference it); countries stay a global
+  lookup (no migration). Frontend needs a `flutter build web` + deploy.
 
 ## Problems encountered & solutions
 

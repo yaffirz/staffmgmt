@@ -48,6 +48,10 @@ class PositionCreate(BaseModel):
     position_title: str
 
 
+class CountryCreate(BaseModel):
+    country_name: str
+
+
 # ---- Update (single) -----------------------------------------------------
 class BrandUpdate(BaseModel):
     brand_name: str
@@ -63,6 +67,10 @@ class StoreUpdate(BaseModel):
 class PositionUpdate(BaseModel):
     brand_id: int
     position_title: str
+
+
+class CountryUpdate(BaseModel):
+    country_name: str
 
 
 # ---- Bulk result ---------------------------------------------------------

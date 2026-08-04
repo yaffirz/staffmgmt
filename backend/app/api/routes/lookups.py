@@ -25,7 +25,9 @@ from app.schemas.lookups import (
     BrandUpdate,
     BulkResult,
     BulkRowError,
+    CountryCreate,
     CountryRead,
+    CountryUpdate,
     PositionCreate,
     PositionRead,
     PositionUpdate,
@@ -223,6 +225,31 @@ def create_position(
     return position
 
 
+@router.post(
+    "/countries", response_model=CountryRead, status_code=status.HTTP_201_CREATED
+)
+def create_country(
+    payload: CountryCreate,
+    current: CurrentUser = Depends(require_roles(*ORG_ROLES)),
+    session: Session = Depends(get_session),
+):
+    # Countries are a global lookup (no tenant), shared across the staff form.
+    name = payload.country_name.strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Country name is required.")
+    taken = {
+        c.country_name.strip().lower()
+        for c in session.exec(select(Countries)).all()
+    }
+    if name.lower() in taken:
+        raise HTTPException(status_code=409, detail=f"Country '{name}' already exists.")
+    country = Countries(country_name=name)
+    session.add(country)
+    session.commit()
+    session.refresh(country)
+    return country
+
+
 @router.patch("/brands/{brand_id}", response_model=BrandRead)
 def update_brand(
     brand_id: int,
@@ -375,6 +402,43 @@ def update_position(
     return position
 
 
+@router.patch("/countries/{country_id}", response_model=CountryRead)
+def update_country(
+    country_id: int,
+    payload: CountryUpdate,
+    current: CurrentUser = Depends(require_roles(*ORG_ROLES)),
+    session: Session = Depends(get_session),
+):
+    country = session.get(Countries, country_id)
+    if country is None:
+        raise HTTPException(status_code=404, detail="Country not found.")
+    name = payload.country_name.strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Country name is required.")
+    clash = session.exec(
+        select(Countries).where(Countries.country_id != country_id)
+    ).all()
+    if any(c.country_name.strip().lower() == name.lower() for c in clash):
+        raise HTTPException(status_code=409, detail=f"Country '{name}' already exists.")
+    old = country.country_name
+    country.country_name = name
+    session.add(country)
+    session.commit()
+    session.refresh(country)
+    session.add(
+        AuditLogs(
+            user_id=current.user_id,
+            action="UPDATE",
+            affected_table="countries",
+            record_id=str(country.country_id),
+            old_value={"country_name": old},
+            new_value={"country_name": name},
+        )
+    )
+    session.commit()
+    return country
+
+
 def _audit_delete(session, current, table, record_id, snapshot):
     session.add(
         AuditLogs(
@@ -505,6 +569,34 @@ def delete_position(
     session.delete(position)
     session.commit()
     _audit_delete(session, current, "positions", position_id, snap)
+    session.commit()
+    return None
+
+
+@router.delete("/countries/{country_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_country(
+    country_id: int,
+    current: CurrentUser = Depends(require_roles(*ORG_ROLES)),
+    session: Session = Depends(get_session),
+):
+    country = session.get(Countries, country_id)
+    if country is None:
+        raise HTTPException(status_code=404, detail="Country not found.")
+    n_emp = len(
+        session.exec(
+            select(Employees).where(Employees.country_id == country_id)
+        ).all()
+    )
+    if n_emp:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Cannot delete '{country.country_name}' — "
+            f"{n_emp} employee(s) reference it.",
+        )
+    snap = {"country_name": country.country_name}
+    session.delete(country)
+    session.commit()
+    _audit_delete(session, current, "countries", country_id, snap)
     session.commit()
     return None
 
