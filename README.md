@@ -100,6 +100,10 @@ custom logo/branding, **single-origin serving + Cloudflare tunnel**.
   staff new-hire form (which was already wired to `GET /api/v1/countries`).
   Guarded delete (blocked while employees reference it); countries stay a global
   lookup (no migration). Frontend needs a `flutter build web` + deploy.
+- **0044 — Employee list filters:** the **All employees** list gains a Filter
+  control (brand / store / position / country) beside the search, combined as
+  AND, with removable filter chips. Client-side only; no backend change.
+  Frontend needs a `flutter build web` + deploy.
 
 ## Problems encountered & solutions
 

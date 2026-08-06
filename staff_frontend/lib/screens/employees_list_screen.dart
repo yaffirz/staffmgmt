@@ -26,6 +26,25 @@ class _EmployeesListScreenState extends State<EmployeesListScreen> {
   int _rowsPerPage = 15;
   bool _canEditMag = false;
 
+  // Facet filters (null = "All"). Combined with the search box as AND.
+  String? _fBrand;
+  String? _fStore;
+  String? _fPosition;
+  String? _fCountry;
+
+  int get _activeFilterCount =>
+      [_fBrand, _fStore, _fPosition, _fCountry].where((x) => x != null).length;
+
+  List<String> _distinct(String? Function(Employee) sel) {
+    final set = <String>{};
+    for (final e in _all) {
+      final v = sel(e)?.trim();
+      if (v != null && v.isNotEmpty) set.add(v);
+    }
+    final list = set.toList()..sort();
+    return list;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -199,6 +218,164 @@ class _EmployeesListScreenState extends State<EmployeesListScreen> {
     );
   }
 
+  void _applyFilters() {
+    _source!.setFilters(
+      brand: _fBrand,
+      store: _fStore,
+      position: _fPosition,
+      country: _fCountry,
+    );
+    setState(() {});
+  }
+
+  Future<void> _openFilters() async {
+    String? brand = _fBrand;
+    String? store = _fStore;
+    String? position = _fPosition;
+    String? country = _fCountry;
+    final brands = _distinct((e) => e.brandName);
+    final stores = _distinct((e) => e.storeName);
+    final positions = _distinct((e) => e.positionTitle);
+    final countries = _distinct((e) => e.countryName);
+
+    final applied = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setLocal) {
+          Widget dd(
+            String label,
+            String? value,
+            List<String> opts,
+            ValueChanged<String?> onCh,
+          ) =>
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: DropdownButtonFormField<String?>(
+                  initialValue: value,
+                  isExpanded: true,
+                  decoration: InputDecoration(
+                    labelText: label,
+                    isDense: true,
+                    border: const OutlineInputBorder(),
+                  ),
+                  items: [
+                    const DropdownMenuItem<String?>(
+                        value: null, child: Text('All')),
+                    ...opts.map((o) => DropdownMenuItem<String?>(
+                        value: o, child: Text(o))),
+                  ],
+                  onChanged: onCh,
+                ),
+              );
+
+          return AlertDialog(
+            title: const Text('Filter employees'),
+            content: SizedBox(
+              width: 360,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  dd('Brand', brand, brands, (v) => setLocal(() => brand = v)),
+                  dd('Store', store, stores, (v) => setLocal(() => store = v)),
+                  dd('Position', position, positions,
+                      (v) => setLocal(() => position = v)),
+                  dd('Country', country, countries,
+                      (v) => setLocal(() => country = v)),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => setLocal(() {
+                  brand = null;
+                  store = null;
+                  position = null;
+                  country = null;
+                }),
+                child: const Text('Clear'),
+              ),
+              const Spacer(),
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text('Apply'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+
+    if (applied == true) {
+      _fBrand = brand;
+      _fStore = store;
+      _fPosition = position;
+      _fCountry = country;
+      _applyFilters();
+    }
+  }
+
+  Widget _activeFiltersBar() {
+    final chips = <Widget>[];
+    void chip(String label, String value, VoidCallback onClear) {
+      chips.add(InputChip(
+        label: Text('$label: $value'),
+        onDeleted: onClear,
+      ));
+    }
+
+    if (_fBrand != null) {
+      chip('Brand', _fBrand!, () {
+        _fBrand = null;
+        _applyFilters();
+      });
+    }
+    if (_fStore != null) {
+      chip('Store', _fStore!, () {
+        _fStore = null;
+        _applyFilters();
+      });
+    }
+    if (_fPosition != null) {
+      chip('Position', _fPosition!, () {
+        _fPosition = null;
+        _applyFilters();
+      });
+    }
+    if (_fCountry != null) {
+      chip('Country', _fCountry!, () {
+        _fCountry = null;
+        _applyFilters();
+      });
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          ...chips,
+          TextButton.icon(
+            onPressed: () {
+              _fBrand = null;
+              _fStore = null;
+              _fPosition = null;
+              _fCountry = null;
+              _applyFilters();
+            },
+            icon: const Icon(Icons.clear_all, size: 18),
+            label: const Text('Clear all'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
@@ -257,7 +434,11 @@ class _EmployeesListScreenState extends State<EmployeesListScreen> {
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
-      child: Material(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (_activeFilterCount > 0) _activeFiltersBar(),
+          Material(
             // Explicit surface + no tint so the M3 primary elevation overlay
             // (the "blue-ish" cast) doesn't get applied.
             color: isDark ? cs.surfaceContainerHigh : Colors.white,
@@ -299,6 +480,17 @@ class _EmployeesListScreenState extends State<EmployeesListScreen> {
                     setState(() {});
                   },
                 ),
+                actions: [
+                  Badge(
+                    isLabelVisible: _activeFilterCount > 0,
+                    label: Text('$_activeFilterCount'),
+                    child: IconButton(
+                      tooltip: 'Filter',
+                      icon: const Icon(Icons.filter_list),
+                      onPressed: _openFilters,
+                    ),
+                  ),
+                ],
                 rowsPerPage: _rowsPerPage,
                 availableRowsPerPage: const [15, 30, 50],
                 onRowsPerPageChanged: (v) =>
@@ -326,6 +518,8 @@ class _EmployeesListScreenState extends State<EmployeesListScreen> {
               ),
             ),
           ),
+        ],
+      ),
     );
   }
 }
@@ -354,6 +548,10 @@ class _EmployeeDataSource extends DataTableSource {
   List<Employee> _all = [];
   List<Employee> _filtered = [];
   String _query = '';
+  String? _fBrand;
+  String? _fStore;
+  String? _fPosition;
+  String? _fCountry;
   final Set<int> _busy = {};
 
   void setEmployees(List<Employee> list) {
@@ -367,12 +565,33 @@ class _EmployeeDataSource extends DataTableSource {
     _applyFilter();
   }
 
+  void setFilters({
+    String? brand,
+    String? store,
+    String? position,
+    String? country,
+  }) {
+    _fBrand = brand;
+    _fStore = store;
+    _fPosition = position;
+    _fCountry = country;
+    _applyFilter();
+  }
+
   void _applyFilter() {
-    if (_query.isEmpty) {
-      _filtered = List.of(_all);
-    } else {
-      _filtered = _all.where((e) => _haystack(e).contains(_query)).toList();
+    Iterable<Employee> r = _all;
+    if (_fBrand != null) r = r.where((e) => (e.brandName ?? '') == _fBrand);
+    if (_fStore != null) r = r.where((e) => (e.storeName ?? '') == _fStore);
+    if (_fPosition != null) {
+      r = r.where((e) => (e.positionTitle ?? '') == _fPosition);
     }
+    if (_fCountry != null) {
+      r = r.where((e) => (e.countryName ?? '') == _fCountry);
+    }
+    if (_query.isNotEmpty) {
+      r = r.where((e) => _haystack(e).contains(_query));
+    }
+    _filtered = r.toList();
     notifyListeners();
   }
 
