@@ -110,6 +110,10 @@ custom logo/branding, **single-origin serving + Cloudflare tunnel**.
   brands (universal)" + per-brand switches); feeds the new-hire form, employee
   position-change, and bulk import. Non-destructive migration. Frontend needs a
   `flutter build web` + deploy.
+- **0046 — Employees UX:** app-wide always-visible scrollbars + any-pointer drag
+  (fixes horizontal scrolling of the wide table on tablets/other aspect ratios),
+  and a **quick-edit profile popup** from the employee Actions column (compact
+  dialog saving via `PUT /employees/{id}`). Frontend only.
 
 ## Problems encountered & solutions
 

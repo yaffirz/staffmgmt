@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -31,6 +32,32 @@ void main() {
   ));
 }
 
+/// App-wide scrolling: always show scrollbars (so horizontal scrolling on wide
+/// tables is discoverable on tablets/other aspect ratios), and allow dragging
+/// with any pointer — mouse/trackpad/touch/stylus — which Flutter web otherwise
+/// restricts to touch.
+class AppScrollBehavior extends MaterialScrollBehavior {
+  const AppScrollBehavior();
+
+  @override
+  Set<PointerDeviceKind> get dragDevices => {
+        PointerDeviceKind.touch,
+        PointerDeviceKind.mouse,
+        PointerDeviceKind.trackpad,
+        PointerDeviceKind.stylus,
+      };
+
+  @override
+  Widget buildScrollbar(
+      BuildContext context, Widget child, ScrollableDetails details) {
+    return Scrollbar(
+      controller: details.controller,
+      thumbVisibility: true,
+      child: child,
+    );
+  }
+}
+
 class StaffPortalApp extends StatelessWidget {
   final AuthService authService;
   final ServerConfigStore serverStore;
@@ -61,6 +88,7 @@ class StaffPortalApp extends StatelessWidget {
         builder: (context, themeProvider, _) => MaterialApp(
           title: 'Staff Portal',
           debugShowCheckedModeBanner: false,
+          scrollBehavior: const AppScrollBehavior(),
           theme: AppTheme.light(),
           darkTheme: AppTheme.dark(),
           themeMode: themeProvider.mode,
