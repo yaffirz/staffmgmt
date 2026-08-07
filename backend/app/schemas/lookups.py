@@ -1,3 +1,5 @@
+from typing import Optional
+
 from pydantic import BaseModel
 
 
@@ -20,8 +22,11 @@ class StoreRead(BaseModel):
 
 class PositionRead(BaseModel):
     position_id: int
-    brand_id: int
+    # None = a universal position (available to all brands minus opt-outs).
+    brand_id: Optional[int] = None
     position_title: str
+    universal: bool = False
+    disabled_brand_ids: list[int] = []
     model_config = {"from_attributes": True}
 
 
@@ -44,8 +49,10 @@ class StoreCreate(BaseModel):
 
 
 class PositionCreate(BaseModel):
-    brand_id: int
+    # None = universal (all brands). disabled_brand_ids opts specific brands out.
+    brand_id: Optional[int] = None
     position_title: str
+    disabled_brand_ids: list[int] = []
 
 
 class CountryCreate(BaseModel):
@@ -65,8 +72,9 @@ class StoreUpdate(BaseModel):
 
 
 class PositionUpdate(BaseModel):
-    brand_id: int
+    brand_id: Optional[int] = None
     position_title: str
+    disabled_brand_ids: list[int] = []
 
 
 class CountryUpdate(BaseModel):

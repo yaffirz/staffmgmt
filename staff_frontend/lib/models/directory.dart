@@ -34,15 +34,35 @@ class Store {
 
 class Position {
   final int id;
-  final int brandId;
+
+  /// null = a universal role (available to all brands minus [disabledBrandIds]).
+  final int? brandId;
   final String title;
-  const Position({required this.id, required this.brandId, required this.title});
+  final bool universal;
+  final List<int> disabledBrandIds;
+  const Position({
+    required this.id,
+    required this.brandId,
+    required this.title,
+    this.universal = false,
+    this.disabledBrandIds = const [],
+  });
 
   factory Position.fromJson(Map<String, dynamic> j) => Position(
         id: j['position_id'] as int,
-        brandId: j['brand_id'] as int,
+        brandId: j['brand_id'] as int?,
         title: j['position_title'] as String,
+        universal: (j['universal'] as bool?) ?? false,
+        disabledBrandIds: ((j['disabled_brand_ids'] as List?) ?? const [])
+            .map((e) => e as int)
+            .toList(growable: false),
       );
+
+  /// Whether this role can be used by [brandId] (its own brand, or a universal
+  /// role not opted out for that brand).
+  bool availableForBrand(int brandId) =>
+      this.brandId == brandId ||
+      (universal && !disabledBrandIds.contains(brandId));
 }
 
 class Country {

@@ -83,9 +83,26 @@ class Positions(SQLModel, table=True):
 
     position_id: Optional[int] = Field(default=None, primary_key=True)
     tenant_id: int = Field(default=1, index=True)
-    # Brand-specific job roles, per the blueprint.
-    brand_id: int = Field(foreign_key="brands.brand_id")
+    # A brand-specific job role, OR a UNIVERSAL role when brand_id is NULL —
+    # available to every brand except those opted out via position_brand_optouts.
+    brand_id: Optional[int] = Field(default=None, foreign_key="brands.brand_id")
     position_title: str
+
+
+class PositionBrandOptOuts(SQLModel, table=True):
+    """A universal position (positions.brand_id IS NULL) switched OFF for a
+    specific brand. Absence of a row = that brand can use the universal role."""
+
+    __tablename__ = "position_brand_optouts"
+    __table_args__ = (
+        UniqueConstraint(
+            "position_id", "brand_id", name="uq_posoptout_position_brand"
+        ),
+    )
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    position_id: int = Field(foreign_key="positions.position_id", index=True)
+    brand_id: int = Field(foreign_key="brands.brand_id", index=True)
 
 
 class Countries(SQLModel, table=True):

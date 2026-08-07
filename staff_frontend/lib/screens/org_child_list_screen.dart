@@ -13,16 +13,20 @@ enum OrgChildKind { store, position }
 
 class _Child {
   final int id;
-  final int brandId;
+  final int? brandId; // null = universal position (all brands)
   final String label;
   final bool isFoodmall; // stores only
   final List<int> extraBrandIds; // stores only
+  final bool universal; // positions only
+  final List<int> disabledBrandIds; // universal positions only
   const _Child(
     this.id,
     this.brandId,
     this.label, {
     this.isFoodmall = false,
     this.extraBrandIds = const [],
+    this.universal = false,
+    this.disabledBrandIds = const [],
   });
 }
 
@@ -76,7 +80,8 @@ class _OrgChildListScreenState extends State<OrgChildListScreen> {
             .toList();
       } else {
         items = (await svc.positions())
-            .map((p) => _Child(p.id, p.brandId, p.title))
+            .map((p) => _Child(p.id, p.brandId, p.title,
+                universal: p.universal, disabledBrandIds: p.disabledBrandIds))
             .toList();
       }
       if (!mounted) return;
@@ -101,6 +106,65 @@ class _OrgChildListScreenState extends State<OrgChildListScreen> {
     return 'Brand $id';
   }
 
+  /// Right-hand label for a row: the brand name, or a universal summary.
+  String _childBrandLabel(_Child c) {
+    if (c.brandId != null) return _brandName(c.brandId!);
+    if (c.disabledBrandIds.isEmpty) return 'All brands';
+    return 'All brands except '
+        '${c.disabledBrandIds.map(_brandName).join(', ')}';
+  }
+
+  /// Brand picker for a position: adds an "All brands (universal)" option, and
+  /// when chosen, per-brand switches to opt individual brands out.
+  Widget _positionBrandSelector(
+    int? brandId,
+    Set<int> disabledBrandIds,
+    void Function(int?) onBrandChanged,
+    void Function(void Function()) setLocal,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        DropdownButtonFormField<int?>(
+          initialValue: brandId,
+          isExpanded: true,
+          decoration: const InputDecoration(labelText: 'Brand'),
+          items: [
+            const DropdownMenuItem<int?>(
+                value: null, child: Text('All brands (universal)')),
+            ..._brands.map((b) =>
+                DropdownMenuItem<int?>(value: b.id, child: Text(b.name))),
+          ],
+          onChanged: onBrandChanged,
+        ),
+        if (brandId == null) ...[
+          const SizedBox(height: 8),
+          const Align(
+            alignment: Alignment.centerLeft,
+            child: Text('Available in these brands',
+                style:
+                    TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600)),
+          ),
+          for (final b in _brands)
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              dense: true,
+              title: Text(b.name),
+              value: !disabledBrandIds.contains(b.id),
+              onChanged: (on) => setLocal(() {
+                if (on) {
+                  disabledBrandIds.remove(b.id);
+                } else {
+                  disabledBrandIds.add(b.id);
+                }
+              }),
+            ),
+        ],
+      ],
+    );
+  }
+
   Future<void> _add() async {
     if (_brands.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -113,6 +177,7 @@ class _OrgChildListScreenState extends State<OrgChildListScreen> {
     String? errorText;
     bool isFoodmall = false;
     final Set<int> extraBrandIds = {};
+    final Set<int> disabledBrandIds = {}; // positions: universal opt-outs
 
     final created = await showDialog<bool>(
       context: context,
@@ -120,7 +185,7 @@ class _OrgChildListScreenState extends State<OrgChildListScreen> {
         builder: (ctx, setLocal) {
           Future<void> submit() async {
             final name = ctrl.text.trim();
-            if (brandId == null) {
+            if (_isStore && brandId == null) {
               setLocal(() => errorText = 'Choose a brand');
               return;
             }
@@ -135,7 +200,9 @@ class _OrgChildListScreenState extends State<OrgChildListScreen> {
                     isFoodmall: isFoodmall,
                     extraBrandIds: isFoodmall ? extraBrandIds.toList() : const []);
               } else {
-                await svc.createPosition(brandId!, name);
+                await svc.createPosition(brandId, name,
+                    disabledBrandIds:
+                        brandId == null ? disabledBrandIds.toList() : const []);
               }
               if (ctx.mounted) Navigator.pop(ctx, true);
             } on ApiException catch (e) {
@@ -153,16 +220,24 @@ class _OrgChildListScreenState extends State<OrgChildListScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    DropdownButtonFormField<int>(
-                      initialValue: brandId,
-                      isExpanded: true,
-                      decoration: const InputDecoration(labelText: 'Brand'),
-                      items: _brands
-                          .map((b) => DropdownMenuItem(
-                              value: b.id, child: Text(b.name)))
-                          .toList(),
-                      onChanged: (v) => setLocal(() => brandId = v),
-                    ),
+                    if (_isStore)
+                      DropdownButtonFormField<int>(
+                        initialValue: brandId,
+                        isExpanded: true,
+                        decoration: const InputDecoration(labelText: 'Brand'),
+                        items: _brands
+                            .map((b) => DropdownMenuItem(
+                                value: b.id, child: Text(b.name)))
+                            .toList(),
+                        onChanged: (v) => setLocal(() => brandId = v),
+                      )
+                    else
+                      _positionBrandSelector(
+                        brandId,
+                        disabledBrandIds,
+                        (v) => setLocal(() => brandId = v),
+                        setLocal,
+                      ),
                     const SizedBox(height: 12),
                     TextField(
                       controller: ctrl,
@@ -205,6 +280,7 @@ class _OrgChildListScreenState extends State<OrgChildListScreen> {
     String? errorText;
     bool isFoodmall = item.isFoodmall;
     final Set<int> extraBrandIds = {...item.extraBrandIds};
+    final Set<int> disabledBrandIds = {...item.disabledBrandIds};
 
     final saved = await showDialog<bool>(
       context: context,
@@ -212,7 +288,7 @@ class _OrgChildListScreenState extends State<OrgChildListScreen> {
         builder: (ctx, setLocal) {
           Future<void> submit() async {
             final name = ctrl.text.trim();
-            if (brandId == null) {
+            if (_isStore && brandId == null) {
               setLocal(() => errorText = 'Choose a brand');
               return;
             }
@@ -227,7 +303,9 @@ class _OrgChildListScreenState extends State<OrgChildListScreen> {
                     isFoodmall: isFoodmall,
                     extraBrandIds: isFoodmall ? extraBrandIds.toList() : const []);
               } else {
-                await svc.updatePosition(item.id, brandId!, name);
+                await svc.updatePosition(item.id, brandId, name,
+                    disabledBrandIds:
+                        brandId == null ? disabledBrandIds.toList() : const []);
               }
               if (ctx.mounted) Navigator.pop(ctx, true);
             } on ApiException catch (e) {
@@ -245,16 +323,24 @@ class _OrgChildListScreenState extends State<OrgChildListScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    DropdownButtonFormField<int>(
-                      initialValue: brandId,
-                      isExpanded: true,
-                      decoration: const InputDecoration(labelText: 'Brand'),
-                      items: _brands
-                          .map((b) => DropdownMenuItem(
-                              value: b.id, child: Text(b.name)))
-                          .toList(),
-                      onChanged: (v) => setLocal(() => brandId = v),
-                    ),
+                    if (_isStore)
+                      DropdownButtonFormField<int>(
+                        initialValue: brandId,
+                        isExpanded: true,
+                        decoration: const InputDecoration(labelText: 'Brand'),
+                        items: _brands
+                            .map((b) => DropdownMenuItem(
+                                value: b.id, child: Text(b.name)))
+                            .toList(),
+                        onChanged: (v) => setLocal(() => brandId = v),
+                      )
+                    else
+                      _positionBrandSelector(
+                        brandId,
+                        disabledBrandIds,
+                        (v) => setLocal(() => brandId = v),
+                        setLocal,
+                      ),
                     const SizedBox(height: 12),
                     TextField(
                       controller: ctrl,
@@ -509,7 +595,12 @@ class _OrgChildListScreenState extends State<OrgChildListScreen> {
 
     final filtered = _filterBrandId == null
         ? _items
-        : _items.where((c) => c.brandId == _filterBrandId).toList();
+        : _items
+            .where((c) =>
+                c.brandId == _filterBrandId ||
+                (c.brandId == null &&
+                    !c.disabledBrandIds.contains(_filterBrandId)))
+            .toList();
 
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -622,7 +713,7 @@ class _OrgChildListScreenState extends State<OrgChildListScreen> {
                                       ),
                                     ),
                                     Text(
-                                      _brandName(c.brandId),
+                                      _childBrandLabel(c),
                                       style: TextStyle(
                                           fontSize: 12.5,
                                           color: cs.onSurfaceVariant),

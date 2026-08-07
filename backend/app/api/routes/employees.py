@@ -17,6 +17,7 @@ from app.models.models import (
     EmployeeAdditionalStores,
     FormFieldConfig,
     Notifications,
+    PositionBrandOptOuts,
     Positions,
     StaffNotes,
     StaffStatusLog,
@@ -697,8 +698,21 @@ async def bulk_employees(
         select(Positions).where(Positions.tenant_id == tenant)
     ).all()
     pos_by_key = {
-        (p.brand_id, p.position_title.strip().lower()): p for p in positions
+        (p.brand_id, p.position_title.strip().lower()): p
+        for p in positions
+        if p.brand_id is not None
     }
+    # Universal positions (brand_id IS NULL) are available to every brand except
+    # those opted out in position_brand_optouts.
+    universal_pos_by_title = {
+        p.position_title.strip().lower(): p
+        for p in positions
+        if p.brand_id is None
+    }
+    universal_optouts: dict[int, set[int]] = {}
+    if universal_pos_by_title:
+        for o in session.exec(select(PositionBrandOptOuts)).all():
+            universal_optouts.setdefault(o.position_id, set()).add(o.brand_id)
     countries = session.exec(select(Countries)).all()
     country_by_name = {c.country_name.strip().lower(): c for c in countries}
 
@@ -770,6 +784,13 @@ async def bulk_employees(
 
             pos_title = cell("position_title")
             position = pos_by_key.get((brand.brand_id, pos_title.lower()))
+            if position is None:
+                # Fall back to a universal role available to this brand.
+                uni = universal_pos_by_title.get(pos_title.lower())
+                if uni is not None and brand.brand_id not in universal_optouts.get(
+                    uni.position_id, set()
+                ):
+                    position = uni
             if position is None:
                 raise ValueError(
                     f"Unknown position '{pos_title}' for brand '{brand_name}'"

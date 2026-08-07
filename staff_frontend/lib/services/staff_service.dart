@@ -93,10 +93,18 @@ class StaffService {
     return Store.fromJson(data);
   }
 
-  Future<Position> createPosition(int brandId, String title) async {
+  Future<Position> createPosition(
+    int? brandId,
+    String title, {
+    List<int> disabledBrandIds = const [],
+  }) async {
     final data = await _api.post(
       '/api/v1/positions',
-      {'brand_id': brandId, 'position_title': title},
+      {
+        'brand_id': brandId,
+        'position_title': title,
+        'disabled_brand_ids': disabledBrandIds,
+      },
     ) as Map<String, dynamic>;
     return Position.fromJson(data);
   }
@@ -126,10 +134,19 @@ class StaffService {
     return Store.fromJson(data);
   }
 
-  Future<Position> updatePosition(int id, int brandId, String title) async {
+  Future<Position> updatePosition(
+    int id,
+    int? brandId,
+    String title, {
+    List<int> disabledBrandIds = const [],
+  }) async {
     final data = await _api.patch(
       '/api/v1/positions/$id',
-      {'brand_id': brandId, 'position_title': title},
+      {
+        'brand_id': brandId,
+        'position_title': title,
+        'disabled_brand_ids': disabledBrandIds,
+      },
     ) as Map<String, dynamic>;
     return Position.fromJson(data);
   }

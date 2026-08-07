@@ -173,7 +173,7 @@ class _NewHireWizardScreenState extends State<NewHireWizardScreen> {
 
   List<Position> get _positionsForBrand => _brandId == null
       ? []
-      : _positions.where((p) => p.brandId == _brandId).toList();
+      : _positions.where((p) => p.availableForBrand(_brandId!)).toList();
 
   String _fmtDisplay(DateTime d) =>
       '${d.month.toString().padLeft(2, '0')}/${d.day.toString().padLeft(2, '0')}/${d.year}';

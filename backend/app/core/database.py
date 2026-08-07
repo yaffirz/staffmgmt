@@ -27,6 +27,9 @@ _MIGRATIONS = [
     # Foodmall flag on stores (a foodmall carries multiple brands).
     "ALTER TABLE stores ADD COLUMN IF NOT EXISTS "
     "is_foodmall BOOLEAN NOT NULL DEFAULT false",
+    # Universal positions: allow positions.brand_id to be NULL (NULL = a role
+    # available to all brands, minus any in position_brand_optouts).
+    "ALTER TABLE positions ALTER COLUMN brand_id DROP NOT NULL",
 ]
 
 

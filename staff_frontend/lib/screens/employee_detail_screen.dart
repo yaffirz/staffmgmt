@@ -169,7 +169,10 @@ class _EmployeeDetailScreenState extends State<EmployeeDetailScreen> {
   Future<void> _changePosition(String action) async {
     final e = _employee!;
     final options = _positions
-        .where((p) => p.brandId == e.brandId && p.id != e.positionId)
+        .where((p) =>
+            e.brandId != null &&
+            p.availableForBrand(e.brandId!) &&
+            p.id != e.positionId)
         .toList();
     if (options.isEmpty) {
       _snack('No other positions available for this brand.');

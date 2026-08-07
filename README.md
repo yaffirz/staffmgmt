@@ -104,6 +104,12 @@ custom logo/branding, **single-origin serving + Cloudflare tunnel**.
   control (brand / store / position / country) beside the search, combined as
   AND, with removable filter chips. Client-side only; no backend change.
   Frontend needs a `flutter build web` + deploy.
+- **0045 — Universal positions:** a job role can be defined once as **universal**
+  (`positions.brand_id` NULL) and used by all brands, with a per-brand opt-out
+  (`position_brand_optouts`). Managed under Brands & Stores → Positions ("All
+  brands (universal)" + per-brand switches); feeds the new-hire form, employee
+  position-change, and bulk import. Non-destructive migration. Frontend needs a
+  `flutter build web` + deploy.
 
 ## Problems encountered & solutions
 
