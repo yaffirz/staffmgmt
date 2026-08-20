@@ -30,6 +30,10 @@ _MIGRATIONS = [
     # Universal positions: allow positions.brand_id to be NULL (NULL = a role
     # available to all brands, minus any in position_brand_optouts).
     "ALTER TABLE positions ALTER COLUMN brand_id DROP NOT NULL",
+    # Provenance / review-completion timestamps on employees (nullable; historical
+    # rows predate them). Used by the employee-list filters.
+    "ALTER TABLE employees ADD COLUMN IF NOT EXISTS created_by INTEGER",
+    "ALTER TABLE employees ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMP",
 ]
 
 

@@ -207,6 +207,11 @@ class Employees(SQLModel, table=True):
     # 'active' | 'terminated'. Added via non-destructive migration.
     employment_status: str = Field(default="active")
     created_at: datetime = Field(default_factory=utcnow)
+    # Who created the record (the signed-in user at add/import time) and when the
+    # row was last marked reviewed. Both nullable — historical rows predate them.
+    # Added via non-destructive migration.
+    created_by: Optional[int] = Field(default=None, foreign_key="users.user_id")
+    reviewed_at: Optional[datetime] = Field(default=None)
 
 
 class EmployeeAdditionalStores(SQLModel, table=True):

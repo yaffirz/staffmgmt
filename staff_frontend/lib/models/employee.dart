@@ -18,6 +18,10 @@ class Employee {
   final String? countryName;
   final List<String> additionalStores;
   final List<int> additionalStoreIds;
+  final DateTime? createdAt;
+  final int? createdBy;
+  final String? createdByName;
+  final DateTime? reviewedAt;
 
   const Employee({
     required this.employeeId,
@@ -39,6 +43,10 @@ class Employee {
     required this.countryName,
     this.additionalStores = const [],
     this.additionalStoreIds = const [],
+    this.createdAt,
+    this.createdBy,
+    this.createdByName,
+    this.reviewedAt,
   });
 
   factory Employee.fromJson(Map<String, dynamic> j) => Employee(
@@ -67,7 +75,32 @@ class Employee {
                 ?.map((e) => e as int)
                 .toList() ??
             const [],
+        createdAt: _parseDate(j['created_at']),
+        createdBy: j['created_by'] as int?,
+        createdByName: j['created_by_name'] as String?,
+        reviewedAt: _parseDate(j['reviewed_at']),
       );
+
+  static DateTime? _parseDate(dynamic v) {
+    if (v == null) return null;
+    return DateTime.tryParse(v.toString());
+  }
+
+  static String _mdy(DateTime? d) => d == null
+      ? '—'
+      : '${d.month.toString().padLeft(2, '0')}/'
+          '${d.day.toString().padLeft(2, '0')}/${d.year}';
+
+  /// Date the record was added (MM/DD/YYYY), or '—'.
+  String get createdAtDisplay => _mdy(createdAt);
+
+  /// Date the record was marked reviewed/completed (MM/DD/YYYY), or '—'.
+  String get reviewedAtDisplay => _mdy(reviewedAt);
+
+  /// Sortable "YYYY-MM" key of the added month (null if unknown).
+  String? get addedMonthKey => createdAt == null
+      ? null
+      : '${createdAt!.year}-${createdAt!.month.toString().padLeft(2, '0')}';
 
   String get additionalStoresDisplay =>
       additionalStores.isEmpty ? '—' : additionalStores.join(', ');

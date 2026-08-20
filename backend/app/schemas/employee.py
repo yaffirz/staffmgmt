@@ -47,11 +47,14 @@ class EmployeeRead(BaseModel):
     position_id: Optional[int]
     reviewed: bool
     created_at: datetime
+    created_by: Optional[int] = None
+    reviewed_at: Optional[datetime] = None
 
     # Resolved display names (option b) — populated by the endpoint.
     store_name: Optional[str] = None
     brand_name: Optional[str] = None
     position_title: Optional[str] = None
     country_name: Optional[str] = None
+    created_by_name: Optional[str] = None  # username of the creator
     additional_stores: list[str] = []  # resolved additional-store names
     additional_store_ids: list[int] = []  # ids, for editing

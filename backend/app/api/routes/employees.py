@@ -22,6 +22,8 @@ from app.models.models import (
     StaffNotes,
     StaffStatusLog,
     Stores,
+    Users,
+    utcnow,
 )
 from app.schemas.auth import CurrentUser
 from app.schemas.employee import (
@@ -124,6 +126,11 @@ def _enrich(emp: Employees, session: Session) -> EmployeeRead:
         if emp.country_id is not None
         else None
     )
+    creator = (
+        session.get(Users, emp.created_by)
+        if emp.created_by is not None
+        else None
+    )
     add_names, add_ids = _additional_stores(emp, session)
     return EmployeeRead(
         employee_id=emp.employee_id,
@@ -141,10 +148,13 @@ def _enrich(emp: Employees, session: Session) -> EmployeeRead:
         position_id=emp.position_id,
         reviewed=emp.reviewed,
         created_at=emp.created_at,
+        created_by=emp.created_by,
+        reviewed_at=emp.reviewed_at,
         store_name=store.store_name if store else None,
         brand_name=brand.brand_name if brand else None,
         position_title=position.position_title if position else None,
         country_name=country.country_name if country else None,
+        created_by_name=creator.username if creator else None,
         additional_stores=add_names,
         additional_store_ids=add_ids,
     )
@@ -222,6 +232,7 @@ def create_employee(
         country_id=payload.country_id,
         primary_store_id=payload.primary_store_id,
         position_id=payload.position_id,
+        created_by=current.user_id,
     )
     session.add(employee)
     session.commit()
@@ -287,6 +298,12 @@ def list_employees(
         ).all()
     }
     countries = {c.country_id: c for c in session.exec(select(Countries)).all()}
+    usernames = {
+        u.user_id: u.username
+        for u in session.exec(
+            select(Users).where(Users.tenant_id == tenant)
+        ).all()
+    }
 
     # Preload additional-store links for all listed employees in one query.
     store_name_by_id = {sid: s.store_name for sid, s in stores.items()}
@@ -332,10 +349,13 @@ def list_employees(
                 position_id=emp.position_id,
                 reviewed=emp.reviewed,
                 created_at=emp.created_at,
+                created_by=emp.created_by,
+                reviewed_at=emp.reviewed_at,
                 store_name=store.store_name if store else None,
                 brand_name=brand.brand_name if brand else None,
                 position_title=position.position_title if position else None,
                 country_name=country.country_name if country else None,
+                created_by_name=usernames.get(emp.created_by),
                 additional_stores=add_names_by_emp.get(emp.employee_id, []),
                 additional_store_ids=add_ids_by_emp.get(emp.employee_id, []),
             )
@@ -405,6 +425,8 @@ def set_reviewed(
 
     old = emp.reviewed
     emp.reviewed = payload.reviewed
+    # Stamp the completion time when marked reviewed; clear it when un-reviewed.
+    emp.reviewed_at = utcnow() if payload.reviewed else None
     session.add(emp)
     session.commit()
     session.refresh(emp)
@@ -875,6 +897,7 @@ async def bulk_employees(
                 country_id=country.country_id if country else None,
                 primary_store_id=store.store_id,
                 position_id=position.position_id,
+                created_by=current.user_id,
             )
             session.add(emp)
             session.commit()
