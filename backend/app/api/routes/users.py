@@ -52,6 +52,10 @@ def _set_additional_roles(
         select(UserRoles).where(UserRoles.user_id == user.user_id)
     ).all():
         session.delete(existing)
+    # Emit the DELETEs before the INSERTs. In a single flush SQLAlchemy would
+    # otherwise order same-table INSERTs ahead of DELETEs, so re-saving an
+    # unchanged role would collide with the old row on uq_user_roles_user_role.
+    session.flush()
     for r in clean:
         session.add(UserRoles(user_id=user.user_id, role=r))
     session.commit()
