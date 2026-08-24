@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from sqlmodel import Session, select
 
 from app.api.deps import require_roles
+from app.core.app_settings import get_bool
 from app.core.database import get_session
 from app.models.models import (
     AreaManagerBrands,
@@ -43,10 +44,15 @@ ADMIN_ROLES = ("Super Admin", "Admin")
 
 
 def _validate_config_required(
-    payload: EmployeeCreate, session: Session, tenant: int
+    payload: EmployeeCreate,
+    session: Session,
+    tenant: int,
+    allow_email_missing: bool = False,
 ) -> None:
     """Enforce required-ness of configurable fields per the form config.
-    Locked/structural fields are already required by the schema."""
+    Locked/structural fields are already required by the schema.
+    `allow_email_missing` waives the email requirement when the record is being
+    created "email pending"."""
     configs = session.exec(
         select(FormFieldConfig)
         .where(FormFieldConfig.tenant_id == tenant)
@@ -55,7 +61,7 @@ def _validate_config_required(
 
     def present(field_key: str) -> bool:
         if field_key == "email":
-            return bool((payload.email or "").strip())
+            return allow_email_missing or bool((payload.email or "").strip())
         if field_key == "payrate":
             return payload.payrate is not None
         if field_key == "pay_currency":
@@ -80,6 +86,17 @@ def _validate_config_required(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=f"Missing required field(s): {', '.join(missing)}.",
         )
+
+
+def _email_pending(payload: EmployeeCreate, session: Session, tenant: int) -> bool:
+    """Effective 'email pending' flag: only when no email is given, the client
+    asked for it, and the email_unavailable_enabled feature is on. An email that
+    is present always clears the flag."""
+    if bool((payload.email or "").strip()):
+        return False
+    if not payload.email_pending:
+        return False
+    return get_bool(session, tenant, "email_unavailable_enabled", True)
 
 
 def _additional_stores(
@@ -140,6 +157,7 @@ def _enrich(emp: Employees, session: Session) -> EmployeeRead:
         date_of_birth=emp.date_of_birth,
         phone_number=emp.phone_number,
         email=emp.email,
+        email_pending=emp.email_pending,
         payrate=emp.payrate,
         pay_currency=emp.pay_currency,
         mag_code=emp.mag_code,
@@ -181,7 +199,10 @@ def create_employee(
             detail=f"An employee with payroll ID '{payload.payroll_id}' already exists.",
         )
 
-    _validate_config_required(payload, session, tenant)
+    email_pending = _email_pending(payload, session, tenant)
+    _validate_config_required(
+        payload, session, tenant, allow_email_missing=email_pending
+    )
 
     if payload.primary_store_id is not None:
         store = session.get(Stores, payload.primary_store_id)
@@ -226,6 +247,7 @@ def create_employee(
         date_of_birth=payload.date_of_birth,
         phone_number=payload.phone_number,
         email=payload.email,
+        email_pending=email_pending,
         payrate=payload.payrate,
         pay_currency=payload.pay_currency,
         mag_code=payload.mag_code,
@@ -341,6 +363,7 @@ def list_employees(
                 date_of_birth=emp.date_of_birth,
                 phone_number=emp.phone_number,
                 email=emp.email,
+                email_pending=emp.email_pending,
                 payrate=emp.payrate,
                 pay_currency=emp.pay_currency,
                 mag_code=emp.mag_code,
@@ -361,6 +384,20 @@ def list_employees(
             )
         )
     return result
+
+
+@router.get("/form-flags")
+def employee_form_flags(
+    current: CurrentUser = Depends(require_roles(*WRITE_ROLES)),
+    session: Session = Depends(get_session),
+):
+    """Feature flags the new-hire wizard needs (readable by write roles, unlike
+    the admin-only settings endpoint)."""
+    return {
+        "email_unavailable_enabled": get_bool(
+            session, current.tenant_id, "email_unavailable_enabled", True
+        ),
+    }
 
 
 def _notify_managers_reviewed(
@@ -536,7 +573,10 @@ def update_employee(
             detail=f"An employee with payroll ID '{payload.payroll_id}' already exists.",
         )
 
-    _validate_config_required(payload, session, tenant)
+    email_pending = _email_pending(payload, session, tenant)
+    _validate_config_required(
+        payload, session, tenant, allow_email_missing=email_pending
+    )
 
     store = session.get(Stores, payload.primary_store_id)
     if store is None or store.tenant_id != tenant:
@@ -573,6 +613,7 @@ def update_employee(
     emp.employee_name = payload.employee_name
     emp.date_of_birth = payload.date_of_birth
     emp.email = payload.email
+    emp.email_pending = email_pending
     emp.payrate = payload.payrate
     emp.pay_currency = payload.pay_currency
     emp.phone_number = payload.phone_number

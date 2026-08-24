@@ -283,6 +283,13 @@ class StaffService {
     return data['mag_code'] as String?;
   }
 
+  /// Feature flags for the new-hire wizard (readable by write roles).
+  Future<Map<String, bool>> employeeFormFlags() async {
+    final data =
+        await _api.get('/api/v1/employees/form-flags') as Map<String, dynamic>;
+    return data.map((k, v) => MapEntry(k, v == true));
+  }
+
   /// Update an employee's MAG card (Admin / Super Admin only).
   Future<Employee> updateMagCode(int employeeId, String? magCode) async {
     final data = await _api.patch(

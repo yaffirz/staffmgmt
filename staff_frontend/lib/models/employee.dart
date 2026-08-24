@@ -5,6 +5,7 @@ class Employee {
   final DateTime dateOfBirth;
   final String? phoneNumber;
   final String? email;
+  final bool emailPending;
   final double? payrate;
   final String? payCurrency;
   final String? magCode;
@@ -30,6 +31,7 @@ class Employee {
     required this.dateOfBirth,
     required this.phoneNumber,
     required this.email,
+    this.emailPending = false,
     required this.payrate,
     required this.payCurrency,
     required this.magCode,
@@ -56,6 +58,7 @@ class Employee {
         dateOfBirth: DateTime.parse(j['date_of_birth'] as String),
         phoneNumber: j['phone_number'] as String?,
         email: j['email'] as String?,
+        emailPending: (j['email_pending'] as bool?) ?? false,
         payrate: (j['payrate'] as num?)?.toDouble(),
         payCurrency: j['pay_currency'] as String?,
         magCode: j['mag_code'] as String?,

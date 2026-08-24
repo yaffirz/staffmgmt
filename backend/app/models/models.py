@@ -197,6 +197,9 @@ class Employees(SQLModel, table=True):
     date_of_birth: date
     phone_number: Optional[str] = Field(default=None)
     email: Optional[str] = Field(default=None)
+    # True = email deliberately not provided at hire ("email unavailable");
+    # flags the row for HR to supply one later. Cleared once an email is set.
+    email_pending: bool = Field(default=False)
     payrate: Optional[float] = Field(default=None)
     pay_currency: Optional[str] = Field(default=None)
     mag_code: Optional[str] = Field(default=None)

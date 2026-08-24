@@ -34,6 +34,10 @@ _MIGRATIONS = [
     # rows predate them). Used by the employee-list filters.
     "ALTER TABLE employees ADD COLUMN IF NOT EXISTS created_by INTEGER",
     "ALTER TABLE employees ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMP",
+    # "Email unavailable" flag — set at hire when no email is provided, cleared
+    # once one is added; drives the amber "provide email" flag in the list.
+    "ALTER TABLE employees ADD COLUMN IF NOT EXISTS "
+    "email_pending BOOLEAN NOT NULL DEFAULT false",
 ]
 
 

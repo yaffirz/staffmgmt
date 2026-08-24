@@ -42,6 +42,9 @@ DEFAULTS: dict[str, str] = {
     # Show the "Get the Android app" download to signed-in users (when an APK
     # has been published to APP_DIST_DIR).
     "app_download_enabled": "true",
+    # New-hire wizard: allow adding a staffer with no email via an "email
+    # currently unavailable" checkbox (the row is then flagged for HR).
+    "email_unavailable_enabled": "true",
 }
 
 

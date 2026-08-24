@@ -24,6 +24,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   static const _mktContentKey = 'marketing_content';
   static const _registrationKey = 'registration_enabled';
   static const _appDownloadKey = 'app_download_enabled';
+  static const _emailUnavailKey = 'email_unavailable_enabled';
 
   // Marketing content types (value -> label).
   static const _mktTypes = <String, String>{
@@ -68,6 +69,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   // Android app download.
   bool _appDownloadOn = true;
 
+  // New-hire "email currently unavailable" option.
+  bool _emailUnavailOn = true;
+
   @override
   void initState() {
     super.initState();
@@ -101,6 +105,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         svc.getSetting(_mktContentKey),
         svc.getSetting(_registrationKey),
         svc.getSetting(_appDownloadKey),
+        svc.getSetting(_emailUnavailKey),
       ]);
       if (!mounted) return;
       final untilRaw = results[4];
@@ -118,6 +123,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _mktContentController.text = results[8];
         _registrationOn = results[9].toLowerCase() == 'true';
         _appDownloadOn = results[10].toLowerCase() == 'true';
+        _emailUnavailOn = results[11].toLowerCase() == 'true';
         _loading = false;
       });
     } catch (_) {
@@ -218,6 +224,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
       );
     }
   }
+
+  Future<void> _setEmailUnavail(bool value) => _setBoolSetting(
+        _emailUnavailKey,
+        value,
+        (v) => _emailUnavailOn = v,
+        (on) => on
+            ? 'New hires can be added without an email (flagged for HR).'
+            : 'An email is now always required for new hires.',
+      );
 
   Future<void> _setAppDownload(bool value) => _setBoolSetting(
         _appDownloadKey,
@@ -344,6 +359,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     'Registrations. (Email sending is not yet configured.)'),
                 value: _registrationOn,
                 onChanged: _saving ? null : _setRegistration,
+              )),
+              const SizedBox(height: 24),
+              _sectionTitle('New-hire form'),
+              const SizedBox(height: 12),
+              _card(SwitchListTile(
+                title: const Text('Allow "email currently unavailable"'),
+                subtitle: const Text(
+                    'Adds a checkbox on the new-hire form so a staffer can be '
+                    'added without an email. The row is flagged amber for HR to '
+                    'provide one, clearing once an email is saved.'),
+                value: _emailUnavailOn,
+                onChanged: _saving ? null : _setEmailUnavail,
               )),
               const SizedBox(height: 24),
               _sectionTitle('Android app'),

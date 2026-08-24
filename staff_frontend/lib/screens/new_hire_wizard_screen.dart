@@ -56,6 +56,11 @@ class _NewHireWizardScreenState extends State<NewHireWizardScreen> {
   Map<String, FormFieldConfig> _config = {};
   static const _fallbackRequired = {'email', 'payrate', 'pay_currency'};
 
+  // "Email currently unavailable" — lets a required-email hire go through with
+  // no email, flagging the row amber for HR. Gated by an admin toggle.
+  bool _emailUnavailableEnabled = false;
+  bool _emailUnavailable = false;
+
   bool _shown(String key) => _config[key]?.enabled ?? true;
   bool _req(String key) =>
       _config[key]?.required ?? _fallbackRequired.contains(key);
@@ -102,6 +107,7 @@ class _NewHireWizardScreenState extends State<NewHireWizardScreen> {
     _countryId = e.countryId;
     _currency = e.payCurrency ?? 'TTD';
     _emailCtrl.text = e.email ?? '';
+    _emailUnavailable = e.emailPending;
     _payrateCtrl.text =
         e.payrate != null ? e.payrate!.toStringAsFixed(2) : '';
     _phoneCtrl.text = e.phoneNumber ?? '';
@@ -124,6 +130,7 @@ class _NewHireWizardScreenState extends State<NewHireWizardScreen> {
         svc.positions(),
         svc.countries(),
         svc.formConfig('employee'),
+        svc.employeeFormFlags(),
       ]);
       if (!mounted) return;
       setState(() {
@@ -134,6 +141,9 @@ class _NewHireWizardScreenState extends State<NewHireWizardScreen> {
         _config = {
           for (final c in results[4] as List<FormFieldConfig>) c.fieldKey: c
         };
+        _emailUnavailableEnabled =
+            (results[5] as Map<String, bool>)['email_unavailable_enabled'] ??
+                false;
         if (_isEditing) {
           _prefillFrom(widget.editing!);
         } else {
@@ -238,8 +248,12 @@ class _NewHireWizardScreenState extends State<NewHireWizardScreen> {
       'primary_store_id': _storeId,
       'position_id': _positionId,
     };
-    if (_shown('email') && _emailCtrl.text.trim().isNotEmpty) {
-      payload['email'] = _emailCtrl.text.trim();
+    if (_shown('email')) {
+      if (_emailUnavailable) {
+        payload['email_pending'] = true; // no email; flag for HR
+      } else if (_emailCtrl.text.trim().isNotEmpty) {
+        payload['email'] = _emailCtrl.text.trim();
+      }
     }
     if (_shown('payrate') && _payrateCtrl.text.trim().isNotEmpty) {
       payload['payrate'] = double.parse(_payrateCtrl.text.trim());
@@ -345,6 +359,7 @@ class _NewHireWizardScreenState extends State<NewHireWizardScreen> {
       _positionId = null;
       _storeId = null;
       _additionalStoreIds.clear();
+      _emailUnavailable = false;
       _submitting = false;
       _submitError = null;
       _step = 0;
@@ -609,15 +624,43 @@ class _NewHireWizardScreenState extends State<NewHireWizardScreen> {
           if (_shown('email')) ...[
             TextFormField(
               controller: _emailCtrl,
+              enabled: !_emailUnavailable,
               keyboardType: TextInputType.emailAddress,
-              decoration: InputDecoration(labelText: 'Email${_star('email')}'),
+              decoration: InputDecoration(
+                labelText: 'Email${_emailUnavailable ? '' : _star('email')}',
+              ),
               validator: (v) {
+                if (_emailUnavailable) return null; // waived
                 final t = v?.trim() ?? '';
                 if (t.isEmpty) return _req('email') ? 'Email is required' : null;
                 final ok = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(t);
                 return ok ? null : 'Enter a valid email address';
               },
             ),
+            // "Email currently unavailable" — only offered when email is
+            // required and the admin toggle is on.
+            if (_req('email') && _emailUnavailableEnabled)
+              Padding(
+                padding: const EdgeInsets.only(top: 2),
+                child: CheckboxListTile(
+                  value: _emailUnavailable,
+                  onChanged: (v) => setState(() {
+                    _emailUnavailable = v ?? false;
+                    if (_emailUnavailable) _emailCtrl.clear();
+                    // Re-run validation so the "required" error clears.
+                    _formKeys[2].currentState?.validate();
+                  }),
+                  dense: true,
+                  contentPadding: EdgeInsets.zero,
+                  controlAffinity: ListTileControlAffinity.leading,
+                  title: const Text('Email currently unavailable'),
+                  subtitle: const Text(
+                    'Add now without an email — the row is flagged for HR to '
+                    'provide one later.',
+                    style: TextStyle(fontSize: 12),
+                  ),
+                ),
+              ),
             const SizedBox(height: 16),
           ],
           if (_shown('payrate') || _shown('pay_currency')) ...[

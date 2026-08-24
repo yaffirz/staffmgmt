@@ -15,6 +15,9 @@ class EmployeeCreate(BaseModel):
     # Configurable fields — required-ness is enforced per the form config,
     # so they are optional at the schema level.
     email: Optional[EmailStr] = None
+    # When true and no email is given, the record is created "email pending"
+    # (allowed only if the email_unavailable_enabled setting is on).
+    email_pending: bool = False
     payrate: Optional[float] = Field(default=None, ge=0)
     pay_currency: Optional[str] = None  # e.g. "TTD", "USD", "JAM", "XCD"
     phone_number: Optional[str] = None
@@ -39,6 +42,7 @@ class EmployeeRead(BaseModel):
     date_of_birth: date
     phone_number: Optional[str]
     email: Optional[str]  # plain str on read, not EmailStr
+    email_pending: bool = False
     payrate: Optional[float]
     pay_currency: Optional[str]
     mag_code: Optional[str]
