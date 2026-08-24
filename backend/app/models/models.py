@@ -206,6 +206,10 @@ class Employees(SQLModel, table=True):
     country_id: Optional[int] = Field(default=None, foreign_key="countries.country_id")
     primary_store_id: Optional[int] = Field(default=None, foreign_key="stores.store_id")
     position_id: Optional[int] = Field(default=None, foreign_key="positions.position_id")
+    # The brand the staffer belongs to. Normally equals the primary store's brand,
+    # but a foodmall store carries several brands, so this records which one they
+    # were hired under. NULL (older rows) falls back to the store's primary brand.
+    brand_id: Optional[int] = Field(default=None, foreign_key="brands.brand_id")
     reviewed: bool = Field(default=False, index=True)
     # 'active' | 'terminated'. Added via non-destructive migration.
     employment_status: str = Field(default="active")

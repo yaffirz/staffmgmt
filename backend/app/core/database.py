@@ -38,6 +38,9 @@ _MIGRATIONS = [
     # once one is added; drives the amber "provide email" flag in the list.
     "ALTER TABLE employees ADD COLUMN IF NOT EXISTS "
     "email_pending BOOLEAN NOT NULL DEFAULT false",
+    # Per-employee brand (which brand of a multi-brand foodmall they belong to).
+    # NULL falls back to the primary store's brand.
+    "ALTER TABLE employees ADD COLUMN IF NOT EXISTS brand_id INTEGER",
 ]
 
 

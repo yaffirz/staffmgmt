@@ -12,6 +12,10 @@ class EmployeeCreate(BaseModel):
     date_of_birth: date  # JSON sends "YYYY-MM-DD"; Pydantic parses it.
     primary_store_id: int
     position_id: int
+    # The brand the staffer belongs to (must be one the primary store serves —
+    # its own brand, or a foodmall extra brand). Optional; defaults to the store's
+    # primary brand when omitted.
+    brand_id: Optional[int] = None
     # Configurable fields — required-ness is enforced per the form config,
     # so they are optional at the schema level.
     email: Optional[EmailStr] = None
@@ -49,6 +53,7 @@ class EmployeeRead(BaseModel):
     country_id: Optional[int]
     primary_store_id: Optional[int]
     position_id: Optional[int]
+    brand_id: Optional[int]  # effective brand (own, else primary store's)
     reviewed: bool
     created_at: datetime
     created_by: Optional[int] = None

@@ -162,7 +162,11 @@ def staff_page(
         if emp.primary_store_id is not None
         else None
     )
-    brand = session.get(Brands, store.brand_id) if store is not None else None
+    # Effective brand: the staffer's own brand_id (foodmall), else the store's.
+    eff_brand_id = emp.brand_id if emp.brand_id is not None else (
+        store.brand_id if store else None
+    )
+    brand = session.get(Brands, eff_brand_id) if eff_brand_id is not None else None
     position = (
         session.get(Positions, emp.position_id)
         if emp.position_id is not None
@@ -175,7 +179,7 @@ def staff_page(
         position_id=emp.position_id,
         position_title=position.position_title if position else None,
         store_name=store.store_name if store else None,
-        brand_id=store.brand_id if store else None,
+        brand_id=eff_brand_id,
         brand_name=brand.brand_name if brand else None,
         employment_status=emp.employment_status,
     )

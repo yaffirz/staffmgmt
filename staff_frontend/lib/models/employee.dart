@@ -14,6 +14,7 @@ class Employee {
   final int? countryId;
   final bool reviewed;
   final String? storeName;
+  final int? brandId;
   final String? brandName;
   final String? positionTitle;
   final String? countryName;
@@ -40,6 +41,7 @@ class Employee {
     required this.countryId,
     required this.reviewed,
     required this.storeName,
+    this.brandId,
     required this.brandName,
     required this.positionTitle,
     required this.countryName,
@@ -67,6 +69,7 @@ class Employee {
         countryId: j['country_id'] as int?,
         reviewed: (j['reviewed'] as bool?) ?? false,
         storeName: j['store_name'] as String?,
+        brandId: j['brand_id'] as int?,
         brandName: j['brand_name'] as String?,
         positionTitle: j['position_title'] as String?,
         countryName: j['country_name'] as String?,

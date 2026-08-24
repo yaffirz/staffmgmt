@@ -98,10 +98,15 @@ class _NewHireWizardScreenState extends State<NewHireWizardScreen> {
     _dob = e.dateOfBirth;
     _storeId = e.primaryStoreId;
     _positionId = e.positionId;
-    for (final s in _stores) {
-      if (s.id == e.primaryStoreId) {
-        _brandId = s.brandId;
-        break;
+    // Prefer the staffer's own brand (foodmall); else derive from the store.
+    if (e.brandId != null) {
+      _brandId = e.brandId;
+    } else {
+      for (final s in _stores) {
+        if (s.id == e.primaryStoreId) {
+          _brandId = s.brandId;
+          break;
+        }
       }
     }
     _countryId = e.countryId;
@@ -248,6 +253,8 @@ class _NewHireWizardScreenState extends State<NewHireWizardScreen> {
       'date_of_birth': _fmtIso(_dob!),
       'primary_store_id': _storeId,
       'position_id': _positionId,
+      // The brand they belong to (matters for multi-brand foodmall stores).
+      'brand_id': _brandId,
     };
     if (_shown('email')) {
       if (_emailUnavailable) {

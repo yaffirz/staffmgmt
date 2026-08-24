@@ -22,6 +22,7 @@ from app.models.models import (
     Positions,
     StaffNotes,
     StaffStatusLog,
+    StoreBrands,
     Stores,
     Users,
     utcnow,
@@ -99,6 +100,42 @@ def _email_pending(payload: EmployeeCreate, session: Session, tenant: int) -> bo
     return get_bool(session, tenant, "email_unavailable_enabled", True)
 
 
+def _store_brand_ids(session: Session, store: Stores) -> set[int]:
+    """Brands a store serves: its primary brand plus any foodmall extra brands."""
+    ids = {store.brand_id}
+    ids.update(
+        sb.brand_id
+        for sb in session.exec(
+            select(StoreBrands).where(StoreBrands.store_id == store.store_id)
+        ).all()
+    )
+    return ids
+
+
+def _resolve_brand_id(
+    payload_brand_id: int | None, store: Stores | None, session: Session
+) -> int | None:
+    """Validate & resolve the employee's brand: it must be one the primary store
+    serves. Falls back to the store's primary brand when omitted."""
+    if store is None:
+        return payload_brand_id
+    if payload_brand_id is None:
+        return store.brand_id
+    if payload_brand_id not in _store_brand_ids(session, store):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Selected brand is not carried by the chosen store.",
+        )
+    return payload_brand_id
+
+
+def _effective_brand_id(emp: Employees, store: Stores | None) -> int | None:
+    """The brand to show for a staffer: their own brand_id, else the store's."""
+    if emp.brand_id is not None:
+        return emp.brand_id
+    return store.brand_id if store is not None else None
+
+
 def _additional_stores(
     emp: Employees, session: Session, store_name_by_id: dict[int, str] | None = None
 ) -> tuple[list[str], list[int]]:
@@ -128,11 +165,8 @@ def _enrich(emp: Employees, session: Session) -> EmployeeRead:
         if emp.primary_store_id is not None
         else None
     )
-    brand = (
-        session.get(Brands, store.brand_id)
-        if store is not None
-        else None
-    )
+    brand_id = _effective_brand_id(emp, store)
+    brand = session.get(Brands, brand_id) if brand_id is not None else None
     position = (
         session.get(Positions, emp.position_id)
         if emp.position_id is not None
@@ -164,6 +198,7 @@ def _enrich(emp: Employees, session: Session) -> EmployeeRead:
         country_id=emp.country_id,
         primary_store_id=emp.primary_store_id,
         position_id=emp.position_id,
+        brand_id=brand_id,
         reviewed=emp.reviewed,
         created_at=emp.created_at,
         created_by=emp.created_by,
@@ -226,6 +261,9 @@ def create_employee(
                 detail="Selected country does not exist.",
             )
 
+    # Resolve the staffer's brand (must be one the primary store serves).
+    resolved_brand_id = _resolve_brand_id(payload.brand_id, store, session)
+
     # Validate optional additional stores (dedupe, must exist in tenant).
     add_store_ids: list[int] = []
     if payload.additional_store_ids:
@@ -254,6 +292,7 @@ def create_employee(
         country_id=payload.country_id,
         primary_store_id=payload.primary_store_id,
         position_id=payload.position_id,
+        brand_id=resolved_brand_id,
         created_by=current.user_id,
     )
     session.add(employee)
@@ -351,7 +390,10 @@ def list_employees(
     result: list[EmployeeRead] = []
     for emp in employees:
         store = stores.get(emp.primary_store_id)
-        brand = brands.get(store.brand_id) if store else None
+        eff_brand_id = emp.brand_id if emp.brand_id is not None else (
+            store.brand_id if store else None
+        )
+        brand = brands.get(eff_brand_id) if eff_brand_id is not None else None
         position = positions.get(emp.position_id)
         country = countries.get(emp.country_id)
         result.append(
@@ -370,6 +412,7 @@ def list_employees(
                 country_id=emp.country_id,
                 primary_store_id=emp.primary_store_id,
                 position_id=emp.position_id,
+                brand_id=eff_brand_id,
                 reviewed=emp.reviewed,
                 created_at=emp.created_at,
                 created_by=emp.created_by,
@@ -589,6 +632,8 @@ def update_employee(
         if country is None:
             raise HTTPException(status_code=400, detail="Selected country does not exist.")
 
+    resolved_brand_id = _resolve_brand_id(payload.brand_id, store, session)
+
     # Validate additional stores.
     add_store_ids: list[int] = []
     if payload.additional_store_ids:
@@ -621,6 +666,7 @@ def update_employee(
     emp.country_id = payload.country_id
     emp.primary_store_id = payload.primary_store_id
     emp.position_id = payload.position_id
+    emp.brand_id = resolved_brand_id
     session.add(emp)
     session.commit()
 
@@ -938,6 +984,7 @@ async def bulk_employees(
                 country_id=country.country_id if country else None,
                 primary_store_id=store.store_id,
                 position_id=position.position_id,
+                brand_id=brand.brand_id,
                 created_by=current.user_id,
             )
             session.add(emp)

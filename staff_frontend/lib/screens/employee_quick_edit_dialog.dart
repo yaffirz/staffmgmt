@@ -64,6 +64,8 @@ class _EmployeeQuickEditDialogState extends State<_EmployeeQuickEditDialog> {
     _storeId = e.primaryStoreId;
     _positionId = e.positionId;
     _countryId = e.countryId;
+    _brandId = e.brandId; // staffer's own brand (foodmall); else derived in _load
+
     _currency = (e.payCurrency == null || e.payCurrency!.isEmpty)
         ? null
         : e.payCurrency;
@@ -96,9 +98,12 @@ class _EmployeeQuickEditDialogState extends State<_EmployeeQuickEditDialog> {
         _stores = results[1] as List<Store>;
         _positions = results[2] as List<Position>;
         _countries = results[3] as List<Country>;
-        // Derive the current brand from the primary store.
-        for (final s in _stores) {
-          if (s.id == _storeId) _brandId = s.brandId;
+        // Fall back to the primary store's brand only when the staffer has no
+        // brand of their own (older rows / non-foodmall).
+        if (_brandId == null) {
+          for (final s in _stores) {
+            if (s.id == _storeId) _brandId = s.brandId;
+          }
         }
         _loading = false;
       });
@@ -184,6 +189,7 @@ class _EmployeeQuickEditDialogState extends State<_EmployeeQuickEditDialog> {
       'date_of_birth': _wireDate(_dob),
       'primary_store_id': _storeId,
       'position_id': _positionId,
+      'brand_id': _brandId,
       'email': _emailCtrl.text.trim().isEmpty ? null : _emailCtrl.text.trim(),
       'payrate': payrate,
       'pay_currency': _currency,
