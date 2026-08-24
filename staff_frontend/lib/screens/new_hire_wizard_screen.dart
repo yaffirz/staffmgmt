@@ -178,8 +178,9 @@ class _NewHireWizardScreenState extends State<NewHireWizardScreen> {
     }
   }
 
-  List<Store> get _storesForBrand =>
-      _brandId == null ? [] : _stores.where((s) => s.brandId == _brandId).toList();
+  List<Store> get _storesForBrand => _brandId == null
+      ? []
+      : _stores.where((s) => s.servesBrand(_brandId!)).toList();
 
   List<Position> get _positionsForBrand => _brandId == null
       ? []

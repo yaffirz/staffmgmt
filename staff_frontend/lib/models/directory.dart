@@ -30,6 +30,11 @@ class Store {
             .map((e) => e as int)
             .toList(growable: false),
       );
+
+  /// Whether this store belongs to [brandId] — its primary brand, or one of the
+  /// extra brands it carries as a foodmall.
+  bool servesBrand(int brandId) =>
+      this.brandId == brandId || extraBrandIds.contains(brandId);
 }
 
 class Position {

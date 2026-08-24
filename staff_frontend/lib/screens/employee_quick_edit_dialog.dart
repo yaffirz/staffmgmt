@@ -114,8 +114,9 @@ class _EmployeeQuickEditDialogState extends State<_EmployeeQuickEditDialog> {
   /// Stores for the chosen brand, always including the currently-selected one
   /// (guards Flutter's "dropdown value not in items" assertion for edge data).
   List<Store> get _storesForBrand {
-    final list =
-        _brandId == null ? <Store>[] : _stores.where((s) => s.brandId == _brandId).toList();
+    final list = _brandId == null
+        ? <Store>[]
+        : _stores.where((s) => s.servesBrand(_brandId!)).toList();
     if (_storeId != null && !list.any((s) => s.id == _storeId)) {
       final cur = _stores.where((s) => s.id == _storeId);
       if (cur.isNotEmpty) list.add(cur.first);
