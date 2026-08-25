@@ -100,6 +100,9 @@ def _set_position_optouts(
         )
     ).all():
         session.delete(existing)
+    # Emit DELETEs before INSERTs; otherwise re-adding a retained brand collides
+    # on the unique constraint (SQLAlchemy orders same-table inserts first).
+    session.flush()
     for bid in clean:
         session.add(
             PositionBrandOptOuts(position_id=position.position_id, brand_id=bid)
@@ -135,6 +138,9 @@ def _set_store_brands(
         select(StoreBrands).where(StoreBrands.store_id == store.store_id)
     ).all():
         session.delete(existing)
+    # Emit DELETEs before INSERTs; otherwise re-adding a retained brand collides
+    # on uq_storebrands_store_brand (SQLAlchemy orders same-table inserts first).
+    session.flush()
     for bid in clean:
         session.add(StoreBrands(store_id=store.store_id, brand_id=bid))
     session.commit()
