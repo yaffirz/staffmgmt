@@ -67,6 +67,7 @@ class _MaintenanceScreenState extends State<MaintenanceScreen>
     final countdown = _countdown(maint.until);
 
     return AppScaffold(
+      globalActions: false, // maintenance gate — keep it minimal
       appBar: AppBar(
         automaticallyImplyLeading: false,
         title: const Text('Under maintenance'),

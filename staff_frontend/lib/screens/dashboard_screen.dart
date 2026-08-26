@@ -27,6 +27,7 @@ class DashboardScreen extends StatelessWidget {
     final user = context.watch<AuthProvider>().user!;
 
     return AppScaffold(
+      globalActions: false, // this bar already carries the global controls
       appBar: AppBar(
         title: const Row(
           mainAxisSize: MainAxisSize.min,

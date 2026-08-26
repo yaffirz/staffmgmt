@@ -75,6 +75,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
+      globalActions: false, // pre-login page
       appBar: AppBar(title: const Text('Create an account')),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
