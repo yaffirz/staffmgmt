@@ -11,6 +11,8 @@ from app.models.models import (
     AreaManagerStores,
     AuditLogs,
     Brands,
+    Notifications,
+    NotificationReads,
     StoreUsers,
     Stores,
     UserRoles,
@@ -466,6 +468,20 @@ def delete_user(
         select(UserRoles).where(UserRoles.user_id == user.user_id)
     ).all():
         session.delete(r)
+    # Clear notification references (FK-blocking): the user's read/dismissed
+    # markers and any notifications addressed personally to them.
+    for nr in session.exec(
+        select(NotificationReads).where(
+            NotificationReads.user_id == user.user_id
+        )
+    ).all():
+        session.delete(nr)
+    for n in session.exec(
+        select(Notifications).where(
+            Notifications.recipient_user_id == user.user_id
+        )
+    ).all():
+        session.delete(n)
     session.delete(user)
     session.commit()
     session.add(
