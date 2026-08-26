@@ -106,11 +106,18 @@ class _OrgChildListScreenState extends State<OrgChildListScreen> {
     return 'Brand $id';
   }
 
-  /// Right-hand label for a row: the brand name, or a universal summary.
+  /// Right-hand label for a row: the brand name, or a compact universal summary.
   String _childBrandLabel(_Child c) {
     if (c.brandId != null) return _brandName(c.brandId!);
     if (c.disabledBrandIds.isEmpty) return 'All brands';
-    return 'All brands except '
+    return 'All brands · with exceptions';
+  }
+
+  /// Full list of excepted brands for the tooltip (null when none / not
+  /// universal), so the compact label can reveal detail on hover / long-press.
+  String? _childBrandExceptions(_Child c) {
+    if (c.brandId != null || c.disabledBrandIds.isEmpty) return null;
+    return 'Not available to: '
         '${c.disabledBrandIds.map(_brandName).join(', ')}';
   }
 
@@ -712,11 +719,21 @@ class _OrgChildListScreenState extends State<OrgChildListScreen> {
                                             fontWeight: FontWeight.w500),
                                       ),
                                     ),
-                                    Text(
-                                      _childBrandLabel(c),
-                                      style: TextStyle(
-                                          fontSize: 12.5,
-                                          color: cs.onSurfaceVariant),
+                                    Tooltip(
+                                      message: _childBrandExceptions(c) ?? '',
+                                      // Hover (desktop) or long-press (touch)
+                                      // reveals the excepted brands; a plain tap
+                                      // still opens the row's editor.
+                                      triggerMode: _childBrandExceptions(c) ==
+                                              null
+                                          ? TooltipTriggerMode.manual
+                                          : TooltipTriggerMode.longPress,
+                                      child: Text(
+                                        _childBrandLabel(c),
+                                        style: TextStyle(
+                                            fontSize: 12.5,
+                                            color: cs.onSurfaceVariant),
+                                      ),
                                     ),
                                     if (_canEdit && !_selecting) ...[
                                       const SizedBox(width: 12),
