@@ -138,6 +138,9 @@ class Users(SQLModel, table=True):
     # When true, the user must set a new password before using the app (enforced
     # at login). Cleared once they change it. Added via non-destructive migration.
     must_change_password: bool = Field(default=False)
+    # When true, the account is suspended: it cannot log in and any live session
+    # is rejected on its next request. Reversible. Non-destructive migration.
+    suspended: bool = Field(default=False)
 
 
 class UserRoles(SQLModel, table=True):

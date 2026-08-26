@@ -1,8 +1,11 @@
 import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from sqlmodel import Session
 
+from app.core.database import get_session
 from app.core.security import decode_access_token
+from app.models.models import Users
 from app.schemas.auth import CurrentUser
 
 # Renders the "Authorize" button in /docs and reads "Authorization: Bearer <token>".
@@ -11,6 +14,7 @@ bearer_scheme = HTTPBearer(auto_error=True)
 
 def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
+    session: Session = Depends(get_session),
 ) -> CurrentUser:
     token = credentials.credentials
     try:
@@ -27,17 +31,31 @@ def get_current_user(
     try:
         # Old tokens (pre multi-role) have no "roles" claim — fall back to [role].
         roles = payload.get("roles") or [payload["role"]]
-        return CurrentUser(
-            user_id=payload["user_id"],
-            username=payload["sub"],
-            role=payload["role"],
-            roles=roles,
-            tenant_id=payload["tenant_id"],
-        )
+        user_id = payload["user_id"]
+        username = payload["sub"]
+        role = payload["role"]
+        tenant_id = payload["tenant_id"]
     except KeyError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Malformed token payload"
         )
+
+    # Suspension is enforced on every request, so suspending a user cuts off any
+    # live session on its next call (not just future logins).
+    user = session.get(Users, user_id)
+    if user is not None and user.suspended:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="This account is suspended.",
+        )
+
+    return CurrentUser(
+        user_id=user_id,
+        username=username,
+        role=role,
+        roles=roles,
+        tenant_id=tenant_id,
+    )
 
 
 def require_roles(*allowed_roles: str):

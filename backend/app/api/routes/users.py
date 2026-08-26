@@ -207,6 +207,7 @@ def _read(session: Session, user: Users) -> UserRead:
         store_id=store_id,
         store_name=store_name,
         must_change_password=user.must_change_password,
+        suspended=user.suspended,
     )
 
 
@@ -286,6 +287,7 @@ def create_user(
         password_hash=hash_password(payload.password),
         role=payload.role,
         must_change_password=payload.must_change_password,
+        suspended=payload.suspended,
     )
     session.add(user)
     session.commit()
@@ -402,6 +404,14 @@ def update_user(
     if payload.must_change_password is not None:
         user.must_change_password = payload.must_change_password
         changes["must_change_password"] = payload.must_change_password
+
+    if payload.suspended is not None and payload.suspended != user.suspended:
+        if user_id == current.user_id and payload.suspended:
+            raise HTTPException(
+                status_code=400, detail="You cannot suspend your own account."
+            )
+        user.suspended = payload.suspended
+        changes["suspended"] = payload.suspended
 
     if changes:
         session.add(user)

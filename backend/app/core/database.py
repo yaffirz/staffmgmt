@@ -44,6 +44,9 @@ _MIGRATIONS = [
     # Force-password-change-at-next-login flag.
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS "
     "must_change_password BOOLEAN NOT NULL DEFAULT false",
+    # Account suspension flag (blocks login + live sessions; reversible).
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS "
+    "suspended BOOLEAN NOT NULL DEFAULT false",
 ]
 
 

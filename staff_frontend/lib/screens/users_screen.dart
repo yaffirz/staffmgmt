@@ -136,6 +136,7 @@ class _UsersScreenState extends State<UsersScreen> {
     String? errorText;
     bool obscurePw = true; // shared reveal toggle for both password fields
     bool mustChange = editing?.mustChangePassword ?? false;
+    bool suspended = editing?.suspended ?? false;
     bool isStoreRole(String r) => r == 'Store' || r == 'Foodmall';
 
     final saved = await showDialog<bool>(
@@ -191,6 +192,8 @@ class _UsersScreenState extends State<UsersScreen> {
                       mustChange != editing.mustChangePassword
                           ? mustChange
                           : null,
+                  suspended:
+                      suspended != editing.suspended ? suspended : null,
                 );
               } else {
                 await svc.createUser(
@@ -279,6 +282,18 @@ class _UsersScreenState extends State<UsersScreen> {
                         style: TextStyle(fontSize: 12),
                       ),
                     ),
+                    if (isEdit && !isSelf)
+                      SwitchListTile(
+                        value: suspended,
+                        onChanged: (v) => setLocal(() => suspended = v),
+                        dense: true,
+                        contentPadding: EdgeInsets.zero,
+                        title: const Text('Account suspended'),
+                        subtitle: const Text(
+                          'Blocks login and ends any active session. Reversible.',
+                          style: TextStyle(fontSize: 12),
+                        ),
+                      ),
                     const SizedBox(height: 12),
                     DropdownButtonFormField<String>(
                       initialValue: role,
@@ -652,6 +667,22 @@ class _UsersScreenState extends State<UsersScreen> {
                                     style: TextStyle(
                                         fontSize: 12,
                                         color: cs.onSurfaceVariant)),
+                              ],
+                              if (u.suspended) ...[
+                                const SizedBox(width: 8),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 8, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0x1FB3261E),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: const Text('Suspended',
+                                      style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w600,
+                                          color: Color(0xFFB3261E))),
+                                ),
                               ],
                             ],
                           ),

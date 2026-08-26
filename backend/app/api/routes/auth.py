@@ -45,6 +45,11 @@ def login(payload: LoginRequest, session: Session = Depends(get_session)):
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid username or password",
         )
+    if user.suspended:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="This account is suspended. Contact an administrator.",
+        )
 
     roles = effective_roles(session, user)
     token = create_access_token(

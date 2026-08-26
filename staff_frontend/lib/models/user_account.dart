@@ -10,6 +10,7 @@ class UserAccount {
   final int? storeId; // Store / Foodmall
   final String? storeName;
   final bool mustChangePassword;
+  final bool suspended;
 
   const UserAccount({
     required this.userId,
@@ -23,6 +24,7 @@ class UserAccount {
     this.storeId,
     this.storeName,
     this.mustChangePassword = false,
+    this.suspended = false,
   });
 
   factory UserAccount.fromJson(Map<String, dynamic> j) {
@@ -48,6 +50,7 @@ class UserAccount {
       storeId: j['store_id'] as int?,
       storeName: j['store_name'] as String?,
       mustChangePassword: (j['must_change_password'] as bool?) ?? false,
+      suspended: (j['suspended'] as bool?) ?? false,
     );
   }
 }

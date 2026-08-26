@@ -205,6 +205,7 @@ class StaffService {
     int? storeId,
     List<String>? additionalRoles,
     bool mustChangePassword = false,
+    bool suspended = false,
   }) async {
     final body = <String, dynamic>{
       'username': username,
@@ -212,6 +213,7 @@ class StaffService {
       'password': password,
       'role': role,
       'must_change_password': mustChangePassword,
+      'suspended': suspended,
     };
     if (brandIds != null) body['brand_ids'] = brandIds;
     if (storeId != null) body['store_id'] = storeId;
@@ -231,6 +233,7 @@ class StaffService {
     int? storeId,
     List<String>? additionalRoles,
     bool? mustChangePassword,
+    bool? suspended,
   }) async {
     final body = <String, dynamic>{};
     if (username != null) body['username'] = username;
@@ -243,6 +246,7 @@ class StaffService {
     if (mustChangePassword != null) {
       body['must_change_password'] = mustChangePassword;
     }
+    if (suspended != null) body['suspended'] = suspended;
     final data =
         await _api.patch('/api/v1/users/$userId', body) as Map<String, dynamic>;
     return UserAccount.fromJson(data);

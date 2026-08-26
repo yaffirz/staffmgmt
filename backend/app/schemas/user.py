@@ -12,6 +12,7 @@ class UserCreate(BaseModel):
     store_id: Optional[int] = None  # only used for Store / Foodmall
     additional_roles: Optional[List[str]] = None  # Super Admin only
     must_change_password: bool = False  # force a change at next login
+    suspended: bool = False  # create the account already suspended (rare)
 
 
 class UserUpdate(BaseModel):
@@ -23,6 +24,7 @@ class UserUpdate(BaseModel):
     store_id: Optional[int] = None  # only used for Store / Foodmall
     additional_roles: Optional[List[str]] = None  # Super Admin only
     must_change_password: Optional[bool] = None  # force a change at next login
+    suspended: Optional[bool] = None  # suspend / reactivate the account
 
 
 class UserRead(BaseModel):
@@ -37,3 +39,4 @@ class UserRead(BaseModel):
     store_id: Optional[int] = None  # Store / Foodmall
     store_name: Optional[str] = None
     must_change_password: bool = False
+    suspended: bool = False
