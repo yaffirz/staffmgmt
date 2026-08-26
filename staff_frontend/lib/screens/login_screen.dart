@@ -133,10 +133,11 @@ class _LoginScreenState extends State<LoginScreen> {
           TextFormField(
             controller: _usernameController,
             textInputAction: TextInputAction.next,
-            autofillHints: const [AutofillHints.username],
-            decoration: const InputDecoration(labelText: 'Username'),
-            validator: (v) =>
-                (v == null || v.trim().isEmpty) ? 'Enter your username' : null,
+            autofillHints: const [AutofillHints.username, AutofillHints.email],
+            decoration: const InputDecoration(labelText: 'Username or email'),
+            validator: (v) => (v == null || v.trim().isEmpty)
+                ? 'Enter your username or email'
+                : null,
           ),
           const SizedBox(height: 16),
           TextFormField(

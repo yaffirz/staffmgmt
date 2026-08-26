@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import func, or_
 from sqlmodel import Session, select
 
 from app.api.deps import get_current_user
@@ -34,10 +35,23 @@ def effective_roles(session: Session, user: Users) -> list[str]:
 
 @router.post("/login", response_model=TokenResponse)
 def login(payload: LoginRequest, session: Session = Depends(get_session)):
-    """Validate credentials and return a JWT carrying role + tenant_id."""
-    user = session.exec(
-        select(Users).where(Users.username == payload.username)
-    ).first()
+    """Validate credentials and return a JWT carrying role + tenant_id.
+    The identifier may be a username or an email, matched case-insensitively."""
+    ident = (payload.username or "").strip()
+    lowered = ident.lower()
+    matches = session.exec(
+        select(Users).where(
+            or_(
+                func.lower(Users.username) == lowered,
+                func.lower(Users.email) == lowered,
+            )
+        )
+    ).all()
+    # Prefer an exact match if two accounts collide only by letter case.
+    user = next(
+        (u for u in matches if u.username == ident or (u.email or "") == ident),
+        matches[0] if matches else None,
+    )
 
     # Same generic error whether the username or the password is wrong.
     if user is None or not verify_password(payload.password, user.password_hash):
