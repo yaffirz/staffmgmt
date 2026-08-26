@@ -39,8 +39,10 @@ from app.schemas.lookups import (
 
 router = APIRouter(prefix="/api/v1", tags=["lookups"])
 
-# Org structure (brands/stores/positions) is managed by these roles.
+# Org structure (brands/positions/countries) is managed by these roles.
 ORG_ROLES = ("Super Admin", "Admin")
+# Stores may also be managed by IT (admin-lite) — they can add/edit/delete stores.
+STORE_MANAGE_ROLES = ("Super Admin", "Admin", "IT")
 
 
 def _extra_brand_ids(session: Session, store_id: int) -> list[int]:
@@ -230,7 +232,7 @@ def create_brand(
 @router.post("/stores", response_model=StoreRead, status_code=status.HTTP_201_CREATED)
 def create_store(
     payload: StoreCreate,
-    current: CurrentUser = Depends(require_roles(*ORG_ROLES)),
+    current: CurrentUser = Depends(require_roles(*STORE_MANAGE_ROLES)),
     session: Session = Depends(get_session),
 ):
     brand = session.get(Brands, payload.brand_id)
@@ -373,7 +375,7 @@ def update_brand(
 def update_store(
     store_id: int,
     payload: StoreUpdate,
-    current: CurrentUser = Depends(require_roles(*ORG_ROLES)),
+    current: CurrentUser = Depends(require_roles(*STORE_MANAGE_ROLES)),
     session: Session = Depends(get_session),
 ):
     store = session.get(Stores, store_id)
@@ -581,7 +583,7 @@ def delete_brand(
 @router.delete("/stores/{store_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_store(
     store_id: int,
-    current: CurrentUser = Depends(require_roles(*ORG_ROLES)),
+    current: CurrentUser = Depends(require_roles(*STORE_MANAGE_ROLES)),
     session: Session = Depends(get_session),
 ):
     store = session.get(Stores, store_id)

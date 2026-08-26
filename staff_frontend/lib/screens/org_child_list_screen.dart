@@ -59,8 +59,13 @@ class _OrgChildListScreenState extends State<OrgChildListScreen> {
   @override
   void initState() {
     super.initState();
-    final role = context.read<AuthProvider>().user?.role;
-    _canEdit = role == 'Super Admin' || role == 'Admin';
+    final user = context.read<AuthProvider>().user;
+    final role = user?.role;
+    // IT (admin-lite) may manage stores — but not positions.
+    final isIT = user?.hasRole('IT') ?? false;
+    _canEdit = role == 'Super Admin' ||
+        role == 'Admin' ||
+        (_isStore && isIT);
     _load();
   }
 

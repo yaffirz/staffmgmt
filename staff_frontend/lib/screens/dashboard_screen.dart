@@ -220,6 +220,8 @@ class _DashboardBody extends StatelessWidget {
         return const [
           _Module('Employees', Icons.badge_outlined, 'View and update staff',
               dest: _Dest.hub),
+          _Module('Brands & Stores', Icons.storefront_outlined,
+              'Add & manage stores', dest: _Dest.brandsHub),
           _Module('Staff Notes', Icons.sticky_note_2_outlined,
               'Provisioning & performance logs',
               dest: _Dest.allNotes),
