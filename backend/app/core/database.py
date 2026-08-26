@@ -41,6 +41,9 @@ _MIGRATIONS = [
     # Per-employee brand (which brand of a multi-brand foodmall they belong to).
     # NULL falls back to the primary store's brand.
     "ALTER TABLE employees ADD COLUMN IF NOT EXISTS brand_id INTEGER",
+    # Force-password-change-at-next-login flag.
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS "
+    "must_change_password BOOLEAN NOT NULL DEFAULT false",
 ]
 
 

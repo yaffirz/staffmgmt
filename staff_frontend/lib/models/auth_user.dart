@@ -4,6 +4,7 @@ class AuthUser {
   final String role; // primary role
   final List<String> roles; // effective roles (primary + additional)
   final int tenantId;
+  final bool mustChangePassword;
 
   const AuthUser({
     required this.userId,
@@ -11,7 +12,17 @@ class AuthUser {
     required this.role,
     required this.roles,
     required this.tenantId,
+    this.mustChangePassword = false,
   });
+
+  AuthUser copyWith({bool? mustChangePassword}) => AuthUser(
+        userId: userId,
+        username: username,
+        role: role,
+        roles: roles,
+        tenantId: tenantId,
+        mustChangePassword: mustChangePassword ?? this.mustChangePassword,
+      );
 
   factory AuthUser.fromJson(Map<String, dynamic> json) {
     final role = json['role'] as String;
@@ -24,6 +35,7 @@ class AuthUser {
       role: role,
       roles: roles.isEmpty ? [role] : roles,
       tenantId: json['tenant_id'] as int,
+      mustChangePassword: (json['must_change_password'] as bool?) ?? false,
     );
   }
 

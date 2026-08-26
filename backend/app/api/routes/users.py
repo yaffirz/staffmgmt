@@ -204,6 +204,7 @@ def _read(session: Session, user: Users) -> UserRead:
         brand_names=names,
         store_id=store_id,
         store_name=store_name,
+        must_change_password=user.must_change_password,
     )
 
 
@@ -282,6 +283,7 @@ def create_user(
         email=email,
         password_hash=hash_password(payload.password),
         role=payload.role,
+        must_change_password=payload.must_change_password,
     )
     session.add(user)
     session.commit()
@@ -394,6 +396,10 @@ def update_user(
             )
         user.password_hash = hash_password(payload.password)
         changes["password"] = "reset"
+
+    if payload.must_change_password is not None:
+        user.must_change_password = payload.must_change_password
+        changes["must_change_password"] = payload.must_change_password
 
     if changes:
         session.add(user)

@@ -9,6 +9,7 @@ class UserAccount {
   final List<String> brandNames;
   final int? storeId; // Store / Foodmall
   final String? storeName;
+  final bool mustChangePassword;
 
   const UserAccount({
     required this.userId,
@@ -21,6 +22,7 @@ class UserAccount {
     this.brandNames = const [],
     this.storeId,
     this.storeName,
+    this.mustChangePassword = false,
   });
 
   factory UserAccount.fromJson(Map<String, dynamic> j) {
@@ -45,6 +47,7 @@ class UserAccount {
           .toList(),
       storeId: j['store_id'] as int?,
       storeName: j['store_name'] as String?,
+      mustChangePassword: (j['must_change_password'] as bool?) ?? false,
     );
   }
 }

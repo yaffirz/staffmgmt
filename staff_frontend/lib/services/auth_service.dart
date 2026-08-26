@@ -26,6 +26,14 @@ class AuthService {
     return AuthUser.fromJson(data);
   }
 
+  /// The signed-in user sets their own new password (forced-change screen).
+  Future<void> changePassword(String newPassword) async {
+    await _api.post(
+      '/api/v1/auth/change-password',
+      {'new_password': newPassword},
+    );
+  }
+
   Future<void> logout() => _tokenStore.clear();
 
   Future<String?> storedToken() => _tokenStore.readToken();

@@ -3,7 +3,7 @@ from sqlmodel import Session, select
 
 from app.api.deps import get_current_user
 from app.core.database import get_session
-from app.core.security import create_access_token, verify_password
+from app.core.security import create_access_token, hash_password, verify_password
 from app.models.models import (
     AreaManagerBrands,
     AreaManagers,
@@ -11,7 +11,12 @@ from app.models.models import (
     UserRoles,
     Users,
 )
-from app.schemas.auth import CurrentUser, LoginRequest, TokenResponse
+from app.schemas.auth import (
+    ChangePasswordRequest,
+    CurrentUser,
+    LoginRequest,
+    TokenResponse,
+)
 
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 
@@ -55,12 +60,44 @@ def login(payload: LoginRequest, session: Session = Depends(get_session)):
         roles=roles,
         user_id=user.user_id,
         tenant_id=user.tenant_id,
+        must_change_password=user.must_change_password,
     )
 
 
 @router.get("/me", response_model=CurrentUser)
-def me(current: CurrentUser = Depends(get_current_user)):
-    """Quick check that a token is valid and decodes to the right identity."""
+def me(
+    current: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    """Quick check that a token is valid and decodes to the right identity.
+    Also reports whether the user must change their password (read live from the
+    DB so the flag reflects any change made since the token was issued)."""
+    user = session.get(Users, current.user_id)
+    current.must_change_password = bool(user and user.must_change_password)
+    return current
+
+
+@router.post("/change-password", response_model=CurrentUser)
+def change_password(
+    payload: ChangePasswordRequest,
+    current: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    """The signed-in user sets their own new password (used by the forced-change
+    screen). Clears the must_change_password flag."""
+    if len(payload.new_password) < 6:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Password must be at least 6 characters.",
+        )
+    user = session.get(Users, current.user_id)
+    if user is None:
+        raise HTTPException(status_code=404, detail="User not found.")
+    user.password_hash = hash_password(payload.new_password)
+    user.must_change_password = False
+    session.add(user)
+    session.commit()
+    current.must_change_password = False
     return current
 
 

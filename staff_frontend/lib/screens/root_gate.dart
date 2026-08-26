@@ -7,6 +7,7 @@ import '../state/maintenance_provider.dart';
 import '../state/server_provider.dart';
 import '../widgets/app_scaffold.dart';
 import 'authenticated_home.dart';
+import 'force_password_change_screen.dart';
 import 'login_screen.dart';
 import 'maintenance_screen.dart';
 import 'server_setup_screen.dart';
@@ -56,6 +57,10 @@ class _RootGateState extends State<RootGate> {
     final auth = context.watch<AuthProvider>();
     if (auth.status == AuthStatus.authenticated) {
       final user = auth.user;
+      // Forced password change blocks everything else until done.
+      if (user != null && user.mustChangePassword) {
+        return const ForcePasswordChangeScreen();
+      }
       final maintenance = context.watch<MaintenanceProvider>();
       if (maintenance.active && user != null && !_isExempt(user)) {
         return const MaintenanceScreen();

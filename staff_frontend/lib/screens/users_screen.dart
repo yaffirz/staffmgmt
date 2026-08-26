@@ -135,6 +135,7 @@ class _UsersScreenState extends State<UsersScreen> {
     List<String> additionalRoles = [...(editing?.additionalRoles ?? const [])];
     String? errorText;
     bool obscurePw = true; // shared reveal toggle for both password fields
+    bool mustChange = editing?.mustChangePassword ?? false;
     bool isStoreRole(String r) => r == 'Store' || r == 'Foodmall';
 
     final saved = await showDialog<bool>(
@@ -186,6 +187,10 @@ class _UsersScreenState extends State<UsersScreen> {
                   brandIds: role == 'Area Manager' ? brandIds : null,
                   storeId: isStoreRole(role) ? storeId : null,
                   additionalRoles: extraRoles,
+                  mustChangePassword:
+                      mustChange != editing.mustChangePassword
+                          ? mustChange
+                          : null,
                 );
               } else {
                 await svc.createUser(
@@ -196,6 +201,7 @@ class _UsersScreenState extends State<UsersScreen> {
                   brandIds: role == 'Area Manager' ? brandIds : null,
                   storeId: isStoreRole(role) ? storeId : null,
                   additionalRoles: extraRoles,
+                  mustChangePassword: mustChange,
                 );
               }
               if (ctx.mounted) Navigator.pop(ctx, true);
@@ -258,6 +264,19 @@ class _UsersScreenState extends State<UsersScreen> {
                           onPressed: () =>
                               setLocal(() => obscurePw = !obscurePw),
                         ),
+                      ),
+                    ),
+                    CheckboxListTile(
+                      value: mustChange,
+                      onChanged: (v) =>
+                          setLocal(() => mustChange = v ?? false),
+                      dense: true,
+                      contentPadding: EdgeInsets.zero,
+                      controlAffinity: ListTileControlAffinity.leading,
+                      title: const Text('Require password change at next login'),
+                      subtitle: const Text(
+                        'The user must set a new password before using the app.',
+                        style: TextStyle(fontSize: 12),
                       ),
                     ),
                     const SizedBox(height: 12),

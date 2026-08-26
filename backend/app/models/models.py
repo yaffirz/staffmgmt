@@ -135,6 +135,9 @@ class Users(SQLModel, table=True):
     email: Optional[str] = Field(default=None)
     password_hash: str
     role: str
+    # When true, the user must set a new password before using the app (enforced
+    # at login). Cleared once they change it. Added via non-destructive migration.
+    must_change_password: bool = Field(default=False)
 
 
 class UserRoles(SQLModel, table=True):

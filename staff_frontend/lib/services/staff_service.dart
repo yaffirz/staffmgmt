@@ -204,12 +204,14 @@ class StaffService {
     List<int>? brandIds,
     int? storeId,
     List<String>? additionalRoles,
+    bool mustChangePassword = false,
   }) async {
     final body = <String, dynamic>{
       'username': username,
       'email': email,
       'password': password,
       'role': role,
+      'must_change_password': mustChangePassword,
     };
     if (brandIds != null) body['brand_ids'] = brandIds;
     if (storeId != null) body['store_id'] = storeId;
@@ -228,6 +230,7 @@ class StaffService {
     List<int>? brandIds,
     int? storeId,
     List<String>? additionalRoles,
+    bool? mustChangePassword,
   }) async {
     final body = <String, dynamic>{};
     if (username != null) body['username'] = username;
@@ -237,6 +240,9 @@ class StaffService {
     if (brandIds != null) body['brand_ids'] = brandIds;
     if (storeId != null) body['store_id'] = storeId;
     if (additionalRoles != null) body['additional_roles'] = additionalRoles;
+    if (mustChangePassword != null) {
+      body['must_change_password'] = mustChangePassword;
+    }
     final data =
         await _api.patch('/api/v1/users/$userId', body) as Map<String, dynamic>;
     return UserAccount.fromJson(data);

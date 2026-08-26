@@ -51,6 +51,17 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  /// Sets a new password for the signed-in user (used by the forced-change
+  /// screen) and clears the must-change flag so the app proceeds.
+  Future<void> changePassword(String newPassword) async {
+    await _authService.changePassword(newPassword);
+    final u = _user;
+    if (u != null) {
+      _user = u.copyWith(mustChangePassword: false);
+      notifyListeners();
+    }
+  }
+
   Future<void> logout() async {
     await _authService.logout();
     _user = null;

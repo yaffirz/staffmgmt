@@ -11,6 +11,7 @@ class UserCreate(BaseModel):
     brand_ids: Optional[List[int]] = None  # only used for Area Manager
     store_id: Optional[int] = None  # only used for Store / Foodmall
     additional_roles: Optional[List[str]] = None  # Super Admin only
+    must_change_password: bool = False  # force a change at next login
 
 
 class UserUpdate(BaseModel):
@@ -21,6 +22,7 @@ class UserUpdate(BaseModel):
     brand_ids: Optional[List[int]] = None
     store_id: Optional[int] = None  # only used for Store / Foodmall
     additional_roles: Optional[List[str]] = None  # Super Admin only
+    must_change_password: Optional[bool] = None  # force a change at next login
 
 
 class UserRead(BaseModel):
@@ -34,3 +36,4 @@ class UserRead(BaseModel):
     brand_names: List[str] = []
     store_id: Optional[int] = None  # Store / Foodmall
     store_name: Optional[str] = None
+    must_change_password: bool = False

@@ -6,6 +6,10 @@ class LoginRequest(BaseModel):
     password: str
 
 
+class ChangePasswordRequest(BaseModel):
+    new_password: str
+
+
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
@@ -13,6 +17,7 @@ class TokenResponse(BaseModel):
     roles: list[str] = []
     user_id: int
     tenant_id: int
+    must_change_password: bool = False
 
 
 class CurrentUser(BaseModel):
@@ -21,6 +26,7 @@ class CurrentUser(BaseModel):
     role: str  # primary role
     roles: list[str] = []  # effective roles (primary + additional)
     tenant_id: int
+    must_change_password: bool = False
 
     def has_role(self, *any_of: str) -> bool:
         """True if the user holds any of the given roles (effective set)."""
