@@ -109,13 +109,16 @@ def _set_brands(
             )
         if bid not in clean:
             clean.append(bid)
-    # Clear existing then add.
+    # Clear existing then add. Flush the DELETEs first — otherwise re-adding a
+    # retained brand collides on uq_amb_manager_brand (SQLAlchemy orders
+    # same-table INSERTs ahead of DELETEs in one flush).
     for existing in session.exec(
         select(AreaManagerBrands).where(
             AreaManagerBrands.manager_id == manager_id
         )
     ).all():
         session.delete(existing)
+    session.flush()
     for bid in clean:
         session.add(AreaManagerBrands(manager_id=manager_id, brand_id=bid))
     session.commit()
@@ -138,6 +141,9 @@ def _set_store_link(
         select(StoreUsers).where(StoreUsers.user_id == user.user_id)
     ).all():
         session.delete(existing)
+    # Flush the DELETE first — re-linking the same user collides on
+    # uq_storeusers_user (SQLAlchemy orders the INSERT ahead of the DELETE).
+    session.flush()
     session.add(StoreUsers(user_id=user.user_id, store_id=store_id))
     session.commit()
 

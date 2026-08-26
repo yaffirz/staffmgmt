@@ -134,6 +134,7 @@ class _UsersScreenState extends State<UsersScreen> {
     int? storeId = editing?.storeId;
     List<String> additionalRoles = [...(editing?.additionalRoles ?? const [])];
     String? errorText;
+    bool obscurePw = true; // shared reveal toggle for both password fields
     bool isStoreRole(String r) => r == 'Store' || r == 'Foodmall';
 
     final saved = await showDialog<bool>(
@@ -227,20 +228,37 @@ class _UsersScreenState extends State<UsersScreen> {
                     const SizedBox(height: 12),
                     TextField(
                       controller: passCtrl,
-                      obscureText: true,
+                      obscureText: obscurePw,
                       decoration: InputDecoration(
                         labelText: isEdit ? 'Reset password' : 'Password',
                         helperText: isEdit
                             ? 'Leave blank to keep current'
                             : 'At least 6 characters',
+                        suffixIcon: IconButton(
+                          icon: Icon(obscurePw
+                              ? Icons.visibility_off
+                              : Icons.visibility),
+                          tooltip: obscurePw ? 'Show password' : 'Hide password',
+                          onPressed: () =>
+                              setLocal(() => obscurePw = !obscurePw),
+                        ),
                       ),
                     ),
                     const SizedBox(height: 12),
                     TextField(
                       controller: confirmCtrl,
-                      obscureText: true,
-                      decoration: const InputDecoration(
-                          labelText: 'Confirm password'),
+                      obscureText: obscurePw,
+                      decoration: InputDecoration(
+                        labelText: 'Confirm password',
+                        suffixIcon: IconButton(
+                          icon: Icon(obscurePw
+                              ? Icons.visibility_off
+                              : Icons.visibility),
+                          tooltip: obscurePw ? 'Show password' : 'Hide password',
+                          onPressed: () =>
+                              setLocal(() => obscurePw = !obscurePw),
+                        ),
+                      ),
                     ),
                     const SizedBox(height: 12),
                     DropdownButtonFormField<String>(

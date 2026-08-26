@@ -678,6 +678,9 @@ def update_employee(
     ).all()
     for link in existing_links:
         session.delete(link)
+    # Flush DELETEs before INSERTs, else a retained additional store collides
+    # on uq_eas_employee_store (SQLAlchemy orders same-table inserts first).
+    session.flush()
     for sid in add_store_ids:
         session.add(
             EmployeeAdditionalStores(employee_id=employee_id, store_id=sid)
