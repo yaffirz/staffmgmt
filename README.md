@@ -20,11 +20,12 @@ _Last updated: 2026-07-31 (AST)._
 
 - **Live:** https://gbgstaff.atmix.io (Cloudflare tunnel → `backend:8000`; single
   origin serves the Flutter web UI + the API).
-- **Git:** branch `main`, tip **`68293b1`** pushed to
-  `github.com/yaffirz/staffmgmt`. **Two changes are uncommitted** — changelog
-  **0040** (in-app APK download) and **0041** (no-store cache fix) — held pending
-  a one-time Cloudflare cache purge (see *Outstanding*).
+- **Git:** branch `main`, latest changelog **`0060`** (2026-08-20). All work is
+  **committed** on `main` (`github.com/yaffirz/staffmgmt`). Nothing uncommitted.
 - **Containers:** `backend`, `cloudflared`, `db` (healthy) all up.
+- **Stability:** stable — every schema change this cycle is non-destructive
+  (`ADD COLUMN IF NOT EXISTS`, no data loss) and was verified (API + `flutter
+  analyze`/`build web`, key flows in-browser). See CLAUDE.md → "Stability".
 
 ## Roles
 
@@ -114,8 +115,56 @@ custom logo/branding, **single-origin serving + Cloudflare tunnel**.
   (fixes horizontal scrolling of the wide table on tablets/other aspect ratios),
   and a **quick-edit profile popup** from the employee Actions column (compact
   dialog saving via `PUT /employees/{id}`). Frontend only.
+- **0047 — Employee filters fix + expand:** fixed the blank Filter dialog and
+  added **who added / date added / date completed / month** facets + preset
+  quick-filters; new `employees.created_by` + `reviewed_at` and Added/Added
+  by/Completed columns.
+- **0049 — "Email unavailable" flag:** new-hire checkbox to add a staffer with no
+  email (`employees.email_pending`); amber row, "Email not valid" review dialog,
+  auto-clears when an email is saved. `email_unavailable_enabled` toggle.
+- **0050 / 0051 — Foodmall stores & per-employee brand:** foodmall stores now show
+  under every brand they carry in the pickers (`Store.servesBrand`), and
+  `employees.brand_id` records which brand a foodmall staffer belongs to (NULL →
+  the store's primary brand).
+- **0054 — Global top bar:** the bell + theme toggle + log-out appear on every
+  signed-in page (via `AppScaffold`), not just the dashboard.
+- **0055 — Compact position exceptions:** universal-position opt-out label reads
+  "All brands · with exceptions" with detail on hover / long-press.
+- **0056 — Force password change:** admin "Require password change at next login"
+  (`users.must_change_password`) + a forced-change screen + self-service
+  `POST /api/v1/auth/change-password`.
+- **0058 — Account suspension:** `users.suspended` blocks login (403) and ends a
+  live session on its next request (`get_current_user`); reversible; admin toggle
+  + "Suspended" badge; can't suspend yourself.
+- **0059 — IT manages stores:** IT can add/edit/delete stores
+  (`STORE_MANAGE_ROLES`) + a Brands & Stores tile; brands/positions/countries stay
+  Admin-only.
+- **0060 — Login by username OR email:** case-insensitive, trimmed, matched
+  against `username` and `email`; field relabeled "Username or email".
+
+(Also: **0043** country management, **0044/0046** filters + UX, **0045**
+universal positions — see above and the changelog for full detail.)
 
 ## Problems encountered & solutions
+
+- **Recurring "replace child rows" 500s (0048, 0052, 0053).** A helper that
+  *deletes all child rows then re-adds them in one flush* violates a unique
+  constraint when a value is **retained** — SQLAlchemy emits same-table INSERTs
+  before DELETEs. Bit `user_roles`, `store_brands`, `position_brand_optouts`,
+  `area_manager_brands`, the Store/Foodmall store-link, and employee
+  additional-stores. **Fixed** with a `session.flush()` between the delete and
+  insert loops. *Rule: any new "replace a set of child rows" helper must flush
+  between delete/insert (or diff the set).*
+- **500 deleting a user (0057).** `delete_user` didn't clean up `notification_reads`
+  / personal notifications (created when a user reads/dismisses a notification or
+  announcement) → FK violation. **Fixed** by removing those first. *Remaining:*
+  deleting a user who **authored notes / processed status changes** still fails —
+  **suspend** them instead (0058).
+- **Filter dialog rendered blank (0047).** A `Spacer` inside `AlertDialog.actions`
+  (an OverflowBar, not a Flex) threw a ParentDataWidget error that **release**
+  builds swallow into a grey `ErrorWidget`. **Fixed** by removing the Spacer.
+- **Invisible password eye icons (0053).** The `_outlined` visibility glyphs were
+  dropped by the Flutter icon tree-shaker → switched to the non-outlined ones.
 
 - **Cloudflare tunnel 502s (multi-part).** (1) `TUNNEL_TOKEN` was empty →
   `cloudflared` crash-looped ("requires the ID of the tunnel") → put the token in
@@ -147,22 +196,26 @@ custom logo/branding, **single-origin serving + Cloudflare tunnel**.
 
 ## Outstanding / next steps
 
-1. **Cloudflare purge (owner action):** dashboard → `atmix.io` → Caching →
-   Configuration → **Purge Everything** (one-time) to clear the stale
-   `main.dart.js`. After that the "Get the Android app" card appears and future
-   deploys are instant (thanks to 0041).
-2. **Commit + push 0040 + 0041** once the purge is confirmed (suggest one commit
-   for the APK-download feature + the cache fix, or two).
-3. **Security before real staff use:** rotate the admin password off
+_(0040/0041 are committed; the one-time Cloudflare purge is no longer a blocker
+now that the app shell is `no-store` and many deploys have shipped since.)_
+
+1. **Security before real staff use:** rotate the admin password off
    `ChangeMe123!` (Users & Roles) and set a strong `JWT_SECRET_KEY`
    (`openssl rand -hex 32`); both are still on test values. Wire real SMTP into
    `core/email.py` once the sending domain (SPF/DKIM) is configured to switch
    registration emails from stub to live.
-4. **Dev-data cleanup (optional):** a demo **"Trincity Foodcourt"** foodmall store
-   (brands Pizza Boys + Churchs + Rituals) exists; the **login marketing block**
-   may still show placeholder "Now hiring…" text — disable/edit in
-   **Settings → Login marketing block** if unwanted. Current toggles:
-   `registration_enabled` off, `backup_schedule` off, `app_download_enabled` on.
+2. **Candidate follow-ups** (none committed): hide/filter terminated staff;
+   retire the dead admin "Notifications" tile (the bell supersedes it);
+   tenant-scope `audit_logs` before multi-tenant; a global "kick to login on
+   401/403" so a **suspended** user is bounced instantly without a reload; clean
+   up authored-history FKs so a content-authoring user can be hard-deleted (or
+   standardise on **suspend**).
+3. **Real org data loaded:** GBG brands/stores (incl. **St Kitts**: Frigate Bay,
+   Fort Street, Ross University, Camps, Atlantic View, etc., and a new **Doubles**
+   brand) and positions were imported this cycle; **Trincity Foodcourt** is a live
+   Pizza Boys + Rituals Coffee House foodmall. Current toggles: `registration_enabled`
+   off, `backup_schedule` off, `app_download_enabled` on,
+   `email_unavailable_enabled` on.
 
 ## Test accounts (dev DB) — password `ChangeMe123!` unless noted
 

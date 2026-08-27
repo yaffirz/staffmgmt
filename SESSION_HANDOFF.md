@@ -1,13 +1,24 @@
 # Session Handoff — Staff Portal (staffmgmt)
 
+> **⚠️ This file is a point-in-time snapshot (through ~changelog 0030, Jul 2026).**
+> The **authoritative current state, feature list, known bugs + fixes, and
+> stability** now live in **`CLAUDE.md`** ("Current state" / "Known bugs fixed" /
+> "Stability"), and the full per-change history is in **`changelog/0001`–`0060`**
+> (highest number = newest). Read those first; the sections below are kept for
+> historical continuity only. Latest work (Aug 2026, changelog 0043–0060): country
+> management; employee filters + UX; universal positions; per-employee/foodmall
+> brand; email-unavailable flag; global top bar; force-password-change; account
+> **suspension**; IT store management; username-or-email login; plus a family of
+> "replace child rows" 500 fixes and other bug fixes.
+
 **Purpose:** hand this to a new chat so it can continue seamlessly. This is a
 *continuation log*, not the operating rules — those live in **`CLAUDE.md`** (read
-that too). Full per-change detail is in **`changelog/0001`–`0028`**. Feature/role
+that too). Full per-change detail is in **`changelog/`**. Feature/role
 reference for end users is in **`docs/USER_GUIDE.md`**; Android build steps in
 **`docs/BUILD_APK.md`**.
 
-_Last updated: 2026-07-17 (AST). Everything below is committed and pushed
-(except the working-tree edits from changelog 0030 until committed)._
+_Snapshot last updated: 2026-07-17 (AST); superseded by CLAUDE.md + changelog
+through 0060 (2026-08-20)._
 
 ---
 

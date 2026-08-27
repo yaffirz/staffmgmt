@@ -132,9 +132,81 @@ Owner: Arif Asad Ali.
   after `flutter build apk`. `app_download_enabled` toggle in Settings
   (changelog 0040).
 
+- **Country management (done):** add/edit/delete countries under Brands & Stores;
+  feeds the staff-form Country field (changelog 0043).
+- **Employee-list filters + UX (done):** filter All-employees by brand / store /
+  position / country plus **who added / date added / date completed / month**,
+  with preset quick-filters; tablet scrollbars + a quick-edit profile popup; and
+  **Added / Added by / Completed** columns backed by `employees.created_by` and
+  `employees.reviewed_at` (changelog 0044, 0046, 0047).
+- **Universal positions (done):** a job role defined once, available to **all**
+  brands with per-brand opt-outs (`positions.brand_id` nullable +
+  `position_brand_optouts`). The opt-out summary reads "All brands · with
+  exceptions" with the excepted brands on hover / long-press (changelog 0045, 0055).
+- **Per-employee brand (done):** `employees.brand_id` (nullable) records which
+  brand of a multi-brand **foodmall** a staffer belongs to; NULL falls back to the
+  primary store's brand. Foodmall stores also appear under **every brand they
+  carry** in the store pickers, not just the primary (`Store.servesBrand`)
+  (changelog 0050, 0051).
+- **"Email unavailable" flag (done):** a new-hire checkbox to add a staffer with
+  no email (`employees.email_pending`); the row is flagged **amber**, IT gets an
+  "Email not valid" dialog on review, and it **auto-clears** once an email is
+  saved. `email_unavailable_enabled` toggle (changelog 0049).
+- **Global top bar (done):** the notification bell + theme toggle + log-out appear
+  on **every** signed-in page (appended by `AppScaffold`), not just the dashboard
+  (changelog 0054).
+- **Force password change (done):** admin checkbox **"Require password change at
+  next login"** (`users.must_change_password`); a forced-change screen gates the
+  app until the user sets a new password; self-service `POST
+  /api/v1/auth/change-password` clears it (changelog 0056).
+- **Account suspension (done):** `users.suspended` — blocks login (403) **and**
+  rejects a live session on its next request (enforced in `get_current_user`).
+  Reversible; admin toggle in the user form + a "Suspended" badge; you cannot
+  suspend your own account (changelog 0058).
+- **IT can manage stores (done):** the IT role may **add / edit / delete stores**
+  (`STORE_MANAGE_ROLES = Super Admin, Admin, IT`) and gets a Brands & Stores
+  dashboard tile; brands / positions / countries stay Admin-only. Frontend edit
+  rights are scoped to the Stores screen only (changelog 0059).
+- **Login by username OR email (done):** the identifier is trimmed and matched
+  **case-insensitively** against both `username` and `email`; the field is
+  relabeled "Username or email" (changelog 0060).
+
+## Known bugs fixed (Aug 2026)
+- **Recurring "replace child rows" 500s.** A helper that *deletes all child rows
+  then re-adds the wanted ones in one flush* hits a unique-constraint violation
+  when a value is **retained** (SQLAlchemy emits same-table INSERTs before
+  DELETEs). Fixed with a `session.flush()` between the delete and insert loops in
+  every such spot: `user_roles` (0048), `store_brands` + `position_brand_optouts`
+  (0052), `area_manager_brands` + Store/Foodmall store-link + employee
+  additional-stores (0053). **When adding any new "replace a set of child rows"
+  helper, flush between delete and insert (or diff the set).**
+- **500 deleting a user** who had read/dismissed a notification (`notification_reads`)
+  or had personal notifications — now cleaned up first (0057). *Known remaining
+  limitation:* deleting a user who **authored staff notes** or processed **status
+  changes** still fails (history FKs) — suspend them instead (0058), or a future
+  change can reassign/nullify that history.
+- **Filter dialog rendered as a blank grey box** — a `Spacer` inside
+  `AlertDialog.actions` (an OverflowBar, not a Flex); release builds swallow the
+  error into a grey `ErrorWidget` (0047).
+- **Foodmall stores missing** under their extra carried brands in the pickers —
+  the filter keyed on the primary brand only (0050).
+- **Invisible password eye icons** — the `_outlined` visibility glyphs were
+  dropped by the icon tree-shaker; switched to the non-outlined ones (0053).
+
+## Stability
+Platform is **stable**. Every schema change this cycle was **non-destructive**
+(`ALTER TABLE … ADD COLUMN IF NOT EXISTS`, no `down -v`, no data loss) and each
+change was verified before commit — backend flows end-to-end against the running
+API, frontend via `flutter analyze` + `flutter build web`, and the key flows
+(suspension live cut-off, forced password change, employee filters, IT store
+access, username/email login) confirmed in-browser. One changelog file per commit
+(standing rule #1); highest number = newest (currently **0060**).
+
 ## Next planned work
 - (No committed backlog.) Candidate follow-ups: hide/filter terminated staff from
   active rosters; relabel/retire the dead admin "Notifications" dashboard tile
   (the bell supersedes it); make audit_logs tenant-scoped before multi-tenant;
   optional server-side write-gating during maintenance; an admin
-  manage/expire-announcements view.
+  manage/expire-announcements view; a global "kick to login on 401/403" so a
+  suspended user is bounced instantly without a reload; clean up authored-history
+  FKs so a content-authoring user can be hard-deleted (or standardise on suspend).
