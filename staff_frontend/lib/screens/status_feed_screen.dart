@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../models/employee.dart';
 import '../models/status_log.dart';
 import '../services/staff_service.dart';
+import '../state/auth_provider.dart';
 import '../widgets/app_scaffold.dart';
 import 'employee_detail_screen.dart';
 
@@ -19,11 +21,54 @@ class _StatusFeedScreenState extends State<StatusFeedScreen> {
   bool _loading = true;
   String? _error;
   List<StatusLogEntry> _entries = [];
+  bool _canChange = false;
+  List<Employee>? _staffCache; // lazily loaded for the search picker
 
   @override
   void initState() {
     super.initState();
+    final me = context.read<AuthProvider>().user;
+    _canChange = me != null &&
+        (me.hasRole('Super Admin') ||
+            me.hasRole('Admin') ||
+            me.hasRole('HR'));
     _load();
+  }
+
+  /// One of PROMOTION/DEMOTION/TERMINATION/REACTIVATION → search a staffer, then
+  /// open their profile with that action pre-armed. Feed refreshes on return.
+  Future<void> _startAction(String action) async {
+    final emp = await _pickEmployee(action);
+    if (emp == null || !mounted) return;
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => EmployeeDetailScreen(
+          employeeId: emp.employeeId,
+          employeeName: emp.employeeName,
+          initialAction: action,
+        ),
+      ),
+    );
+    if (mounted) _load();
+  }
+
+  /// Modal staff search (name), used by the quick-action buttons.
+  Future<Employee?> _pickEmployee(String action) async {
+    final title = switch (action) {
+      'PROMOTION' => 'Promote — find staff',
+      'DEMOTION' => 'Demote — find staff',
+      'TERMINATION' => 'Terminate — find staff',
+      'REACTIVATION' => 'Reactivate — find staff',
+      _ => 'Find staff',
+    };
+    return showDialog<Employee>(
+      context: context,
+      builder: (ctx) => _StaffSearchDialog(
+        title: title,
+        preloaded: _staffCache,
+        onLoaded: (list) => _staffCache = list,
+      ),
+    );
   }
 
   Future<void> _load() async {
@@ -80,12 +125,6 @@ class _StatusFeedScreenState extends State<StatusFeedScreen> {
       );
     }
     final cs = Theme.of(context).colorScheme;
-    if (_entries.isEmpty) {
-      return Center(
-        child: Text('No status changes yet.',
-            style: TextStyle(color: cs.onSurfaceVariant)),
-      );
-    }
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
       child: Center(
@@ -93,9 +132,67 @@ class _StatusFeedScreenState extends State<StatusFeedScreen> {
           constraints: const BoxConstraints(maxWidth: 760),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [for (final e in _entries) _entryCard(e, cs)],
+            children: [
+              if (_canChange) _actionBar(cs),
+              if (_entries.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: 48),
+                  child: Center(
+                    child: Text('No status changes yet.',
+                        style: TextStyle(color: cs.onSurfaceVariant)),
+                  ),
+                )
+              else
+                for (final e in _entries) _entryCard(e, cs),
+            ],
           ),
         ),
+      ),
+    );
+  }
+
+  /// Quick-action buttons: search a staffer, then open their profile with the
+  /// chosen action pre-armed.
+  Widget _actionBar(ColorScheme cs) {
+    Widget btn(String action, IconData icon, String label, Color color) {
+      return OutlinedButton.icon(
+        onPressed: () => _startAction(action),
+        icon: Icon(icon, size: 18, color: color),
+        label: Text(label),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: cs.onSurface,
+          side: BorderSide(color: cs.outlineVariant),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        ),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Record a status change',
+              style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: cs.onSurfaceVariant)),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              btn('PROMOTION', Icons.arrow_upward, 'Promote',
+                  const Color(0xFF2E7D43)),
+              btn('DEMOTION', Icons.arrow_downward, 'Demote',
+                  const Color(0xFFB26A00)),
+              btn('TERMINATION', Icons.person_off, 'Terminate',
+                  const Color(0xFFB3261E)),
+              btn('REACTIVATION', Icons.restart_alt, 'Reactivate',
+                  const Color(0xFF1565C0)),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -179,6 +276,148 @@ class _StatusFeedScreenState extends State<StatusFeedScreen> {
       height: 34,
       decoration: BoxDecoration(color: bg, shape: BoxShape.circle),
       child: Icon(icon, size: 18, color: fg),
+    );
+  }
+}
+
+/// Name-search picker over all staff. Loads once (cached by the caller) and
+/// filters client-side; returns the chosen [Employee] via Navigator.pop.
+class _StaffSearchDialog extends StatefulWidget {
+  final String title;
+  final List<Employee>? preloaded;
+  final ValueChanged<List<Employee>> onLoaded;
+  const _StaffSearchDialog({
+    required this.title,
+    required this.preloaded,
+    required this.onLoaded,
+  });
+
+  @override
+  State<_StaffSearchDialog> createState() => _StaffSearchDialogState();
+}
+
+class _StaffSearchDialogState extends State<_StaffSearchDialog> {
+  final TextEditingController _ctrl = TextEditingController();
+  List<Employee>? _all;
+  String? _error;
+  String _query = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _all = widget.preloaded;
+    if (_all == null) _load();
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _load() async {
+    try {
+      final list = await context.read<StaffService>().listEmployees();
+      list.sort((a, b) => a.employeeName
+          .toLowerCase()
+          .compareTo(b.employeeName.toLowerCase()));
+      if (!mounted) return;
+      widget.onLoaded(list);
+      setState(() => _all = list);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _error = 'Could not load staff.');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final all = _all;
+    final q = _query.trim().toLowerCase();
+    final filtered = all == null
+        ? const <Employee>[]
+        : (q.isEmpty
+            ? all
+            : all
+                .where((e) => e.employeeName.toLowerCase().contains(q))
+                .toList());
+
+    return AlertDialog(
+      title: Text(widget.title),
+      content: SizedBox(
+        width: 420,
+        height: 460,
+        child: Column(
+          children: [
+            TextField(
+              controller: _ctrl,
+              autofocus: true,
+              decoration: const InputDecoration(
+                labelText: 'Search by name',
+                prefixIcon: Icon(Icons.search),
+                isDense: true,
+              ),
+              onChanged: (v) => setState(() => _query = v),
+            ),
+            const SizedBox(height: 8),
+            Expanded(
+              child: _error != null
+                  ? Center(child: Text(_error!))
+                  : all == null
+                      ? const Center(child: CircularProgressIndicator())
+                      : filtered.isEmpty
+                          ? Center(
+                              child: Text(
+                                q.isEmpty
+                                    ? 'No staff found.'
+                                    : 'No matches for "$q".',
+                                style:
+                                    TextStyle(color: cs.onSurfaceVariant),
+                              ),
+                            )
+                          : ListView.separated(
+                              itemCount: filtered.length,
+                              separatorBuilder: (_, __) =>
+                                  const Divider(height: 1),
+                              itemBuilder: (context, i) {
+                                final e = filtered[i];
+                                final sub = [
+                                  if ((e.positionTitle ?? '').isNotEmpty)
+                                    e.positionTitle!,
+                                  if ((e.brandName ?? '').isNotEmpty)
+                                    e.brandName!,
+                                  if ((e.storeName ?? '').isNotEmpty)
+                                    e.storeName!,
+                                ].join('  ·  ');
+                                return ListTile(
+                                  dense: true,
+                                  contentPadding: EdgeInsets.zero,
+                                  leading: CircleAvatar(
+                                    radius: 16,
+                                    backgroundColor: cs.primary
+                                        .withOpacity(0.12),
+                                    child: Icon(Icons.person,
+                                        size: 18, color: cs.primary),
+                                  ),
+                                  title: Text(e.employeeName),
+                                  subtitle:
+                                      sub.isEmpty ? null : Text(sub),
+                                  onTap: () =>
+                                      Navigator.pop(context, e),
+                                );
+                              },
+                            ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+      ],
     );
   }
 }

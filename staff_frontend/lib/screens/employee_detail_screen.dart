@@ -15,10 +15,16 @@ class EmployeeDetailScreen extends StatefulWidget {
   final int employeeId;
   final String? employeeName;
 
+  /// Optional status action to auto-open once the page finishes loading, used
+  /// when arriving from the Status Changes quick-action buttons. One of
+  /// 'PROMOTION', 'DEMOTION', 'TERMINATION', 'REACTIVATION'.
+  final String? initialAction;
+
   const EmployeeDetailScreen({
     super.key,
     required this.employeeId,
     this.employeeName,
+    this.initialAction,
   });
 
   @override
@@ -35,6 +41,7 @@ class _EmployeeDetailScreenState extends State<EmployeeDetailScreen> {
   bool _canManageStatus = false;
   List<Position> _positions = [];
   List<StatusLogEntry> _statusLog = [];
+  String? _pendingInitialAction; // fired once after the first successful load
 
   @override
   void initState() {
@@ -44,7 +51,39 @@ class _EmployeeDetailScreenState extends State<EmployeeDetailScreen> {
         (me.hasRole('Super Admin') ||
             me.hasRole('Admin') ||
             me.hasRole('HR'));
+    _pendingInitialAction = widget.initialAction;
     _load();
+  }
+
+  /// After the page loads, auto-open the action requested by the Status Changes
+  /// quick-action buttons (promote/demote/terminate/reactivate). Runs once.
+  void _maybeRunInitialAction() {
+    final action = _pendingInitialAction;
+    if (action == null || !_canManageStatus || _employee == null) return;
+    _pendingInitialAction = null;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      switch (action) {
+        case 'PROMOTION':
+        case 'DEMOTION':
+          _changePosition(action);
+          break;
+        case 'TERMINATION':
+          if (_employee!.isTerminated) {
+            _snack('${_employee!.employeeName} is already terminated.');
+          } else {
+            _terminate();
+          }
+          break;
+        case 'REACTIVATION':
+          if (!_employee!.isTerminated) {
+            _snack('${_employee!.employeeName} is already active.');
+          } else {
+            _reactivate();
+          }
+          break;
+      }
+    });
   }
 
   Future<void> _load() async {
@@ -76,6 +115,7 @@ class _EmployeeDetailScreenState extends State<EmployeeDetailScreen> {
         _statusLog = statusLog;
         _loading = false;
       });
+      _maybeRunInitialAction();
     } catch (_) {
       if (!mounted) return;
       setState(() {
