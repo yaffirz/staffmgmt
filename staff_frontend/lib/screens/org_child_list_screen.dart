@@ -45,6 +45,8 @@ class _OrgChildListScreenState extends State<OrgChildListScreen> {
   bool _loading = true;
   String? _error;
   int? _filterBrandId; // null = all
+  final TextEditingController _searchCtrl = TextEditingController();
+  String _query = ''; // name search (case-insensitive)
   bool _canEdit = false;
   bool _selecting = false;
   final Set<int> _selected = {};
@@ -67,6 +69,12 @@ class _OrgChildListScreenState extends State<OrgChildListScreen> {
         role == 'Admin' ||
         (_isStore && isIT);
     _load();
+  }
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
   }
 
   Future<void> _load() async {
@@ -605,23 +613,54 @@ class _OrgChildListScreenState extends State<OrgChildListScreen> {
       );
     }
 
-    final filtered = _filterBrandId == null
-        ? _items
-        : _items
-            .where((c) =>
-                c.brandId == _filterBrandId ||
-                (c.brandId == null &&
-                    !c.disabledBrandIds.contains(_filterBrandId)))
-            .toList();
+    final q = _query.trim().toLowerCase();
+    final filtered = _items.where((c) {
+      final brandOk = _filterBrandId == null ||
+          c.brandId == _filterBrandId ||
+          (c.brandId == null && !c.disabledBrandIds.contains(_filterBrandId));
+      final nameOk = q.isEmpty || c.label.toLowerCase().contains(q);
+      return brandOk && nameOk;
+    }).toList();
 
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Column(
       children: [
+        // Name search
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 720),
+              child: TextField(
+                controller: _searchCtrl,
+                decoration: InputDecoration(
+                  labelText: 'Search $_titlePlural',
+                  hintText: _isStore
+                      ? 'Search by store name'
+                      : 'Search by position title',
+                  isDense: true,
+                  prefixIcon: const Icon(Icons.search),
+                  suffixIcon: _query.isEmpty
+                      ? null
+                      : IconButton(
+                          tooltip: 'Clear',
+                          icon: const Icon(Icons.clear),
+                          onPressed: () {
+                            _searchCtrl.clear();
+                            setState(() => _query = '');
+                          },
+                        ),
+                ),
+                onChanged: (v) => setState(() => _query = v),
+              ),
+            ),
+          ),
+        ),
         // Brand filter
         Padding(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 4),
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 4),
           child: Center(
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 720),
@@ -649,13 +688,28 @@ class _OrgChildListScreenState extends State<OrgChildListScreen> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text('No $_titlePlural yet.'),
+                      Text((_query.trim().isNotEmpty || _filterBrandId != null)
+                          ? 'No $_titlePlural match your search.'
+                          : 'No $_titlePlural yet.'),
                       const SizedBox(height: 12),
-                      FilledButton.icon(
-                        onPressed: _add,
-                        icon: const Icon(Icons.add),
-                        label: Text('Add $_titleSingular'),
-                      ),
+                      if (_query.trim().isNotEmpty || _filterBrandId != null)
+                        OutlinedButton.icon(
+                          onPressed: () {
+                            _searchCtrl.clear();
+                            setState(() {
+                              _query = '';
+                              _filterBrandId = null;
+                            });
+                          },
+                          icon: const Icon(Icons.filter_alt_off),
+                          label: const Text('Clear filters'),
+                        )
+                      else
+                        FilledButton.icon(
+                          onPressed: _add,
+                          icon: const Icon(Icons.add),
+                          label: Text('Add $_titleSingular'),
+                        ),
                     ],
                   ),
                 )
