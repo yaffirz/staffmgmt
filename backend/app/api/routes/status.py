@@ -14,6 +14,7 @@ from app.models.models import (
     Employees,
     Notifications,
     Positions,
+    PositionBrandOptOuts,
     StaffStatusLog,
     Stores,
     Users,
@@ -107,16 +108,30 @@ def change_status(
         pos = session.get(Positions, payload.to_position_id)
         if pos is None or pos.tenant_id != current.tenant_id:
             raise HTTPException(status_code=422, detail="Unknown position.")
-        # New position must be in the employee's own brand (if the employee has one).
-        emp_brand_id = None
-        if emp.primary_store_id is not None:
+        # The new position must be usable by the employee's brand. A position is
+        # brand-specific (positions.brand_id set) or universal (brand_id NULL,
+        # available to all brands except those opted out) — mirror the frontend's
+        # availableForBrand rule so universal positions are accepted.
+        emp_brand_id = emp.brand_id
+        if emp_brand_id is None and emp.primary_store_id is not None:
             st = session.get(Stores, emp.primary_store_id)
             emp_brand_id = st.brand_id if st else None
-        if emp_brand_id is not None and pos.brand_id != emp_brand_id:
-            raise HTTPException(
-                status_code=422,
-                detail="That position belongs to a different brand.",
-            )
+        if emp_brand_id is not None:
+            if pos.brand_id is not None:
+                brand_ok = pos.brand_id == emp_brand_id
+            else:
+                opted_out = session.exec(
+                    select(PositionBrandOptOuts).where(
+                        PositionBrandOptOuts.position_id == pos.position_id,
+                        PositionBrandOptOuts.brand_id == emp_brand_id,
+                    )
+                ).first()
+                brand_ok = opted_out is None
+            if not brand_ok:
+                raise HTTPException(
+                    status_code=422,
+                    detail="That position isn't available for this staffer's brand.",
+                )
         old_pos = (
             session.get(Positions, emp.position_id)
             if emp.position_id is not None
@@ -131,6 +146,12 @@ def change_status(
             }
         )
         emp.position_id = pos.position_id
+        # A promotion re-opens the row for IT: mark it unreviewed and flag it so
+        # the employee list tints it blue and floats it to the top for IT.
+        if action == "PROMOTION":
+            emp.reviewed = False
+            emp.reviewed_at = None
+            emp.promotion_pending_review = True
     elif action == "TERMINATION":
         if emp.employment_status == "terminated":
             raise HTTPException(

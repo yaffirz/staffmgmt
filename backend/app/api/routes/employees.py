@@ -200,6 +200,7 @@ def _enrich(emp: Employees, session: Session) -> EmployeeRead:
         position_id=emp.position_id,
         brand_id=brand_id,
         reviewed=emp.reviewed,
+        promotion_pending_review=emp.promotion_pending_review,
         created_at=emp.created_at,
         created_by=emp.created_by,
         reviewed_at=emp.reviewed_at,
@@ -414,6 +415,7 @@ def list_employees(
                 position_id=emp.position_id,
                 brand_id=eff_brand_id,
                 reviewed=emp.reviewed,
+                promotion_pending_review=emp.promotion_pending_review,
                 created_at=emp.created_at,
                 created_by=emp.created_by,
                 reviewed_at=emp.reviewed_at,
@@ -507,6 +509,9 @@ def set_reviewed(
     emp.reviewed = payload.reviewed
     # Stamp the completion time when marked reviewed; clear it when un-reviewed.
     emp.reviewed_at = utcnow() if payload.reviewed else None
+    # Reviewing clears the "promotion — review" flag (the review has happened).
+    if payload.reviewed:
+        emp.promotion_pending_review = False
     session.add(emp)
     session.commit()
     session.refresh(emp)

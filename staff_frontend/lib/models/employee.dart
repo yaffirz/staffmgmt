@@ -13,6 +13,7 @@ class Employee {
   final int? positionId;
   final int? countryId;
   final bool reviewed;
+  final bool promotionPendingReview; // set by a promotion; awaits IT review
   final String? storeName;
   final int? brandId;
   final String? brandName;
@@ -40,6 +41,7 @@ class Employee {
     required this.positionId,
     required this.countryId,
     required this.reviewed,
+    this.promotionPendingReview = false,
     required this.storeName,
     this.brandId,
     required this.brandName,
@@ -68,6 +70,8 @@ class Employee {
         positionId: j['position_id'] as int?,
         countryId: j['country_id'] as int?,
         reviewed: (j['reviewed'] as bool?) ?? false,
+        promotionPendingReview:
+            (j['promotion_pending_review'] as bool?) ?? false,
         storeName: j['store_name'] as String?,
         brandId: j['brand_id'] as int?,
         brandName: j['brand_name'] as String?,

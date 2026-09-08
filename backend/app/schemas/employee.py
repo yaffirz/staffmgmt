@@ -55,6 +55,7 @@ class EmployeeRead(BaseModel):
     position_id: Optional[int]
     brand_id: Optional[int]  # effective brand (own, else primary store's)
     reviewed: bool
+    promotion_pending_review: bool = False
     created_at: datetime
     created_by: Optional[int] = None
     reviewed_at: Optional[datetime] = None

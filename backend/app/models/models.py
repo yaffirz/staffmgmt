@@ -225,6 +225,10 @@ class Employees(SQLModel, table=True):
     # Added via non-destructive migration.
     created_by: Optional[int] = Field(default=None, foreign_key="users.user_id")
     reviewed_at: Optional[datetime] = Field(default=None)
+    # True = the row was set unreviewed by a promotion and awaits an IT review.
+    # Drives the blue "promotion — review" flag in the employee list and floats
+    # the row to the top for IT viewers. Cleared when the row is marked reviewed.
+    promotion_pending_review: bool = Field(default=False)
 
 
 class EmployeeAdditionalStores(SQLModel, table=True):

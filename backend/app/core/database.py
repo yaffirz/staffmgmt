@@ -47,6 +47,10 @@ _MIGRATIONS = [
     # Account suspension flag (blocks login + live sessions; reversible).
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS "
     "suspended BOOLEAN NOT NULL DEFAULT false",
+    # Set true when a promotion marks the row unreviewed; drives the blue
+    # "promotion — review" flag and floats the row to the top for IT viewers.
+    "ALTER TABLE employees ADD COLUMN IF NOT EXISTS "
+    "promotion_pending_review BOOLEAN NOT NULL DEFAULT false",
 ]
 
 
