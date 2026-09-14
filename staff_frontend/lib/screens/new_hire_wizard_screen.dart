@@ -507,25 +507,18 @@ class _NewHireWizardScreenState extends State<NewHireWizardScreen> {
                 : (v) => setState(() => _positionId = v),
           ),
           const SizedBox(height: 16),
-          DropdownButtonFormField<int>(
+          _StoreSearchField(
             key: ValueKey('store-$_brandId-$_resetTick'),
-            initialValue: _storeId,
-            isExpanded: true,
-            decoration: InputDecoration(
-              labelText: 'Primary store *',
-              helperText: _brandId == null ? 'Choose a brand first' : null,
-            ),
-            items: _storesForBrand
-                .map((s) =>
-                    DropdownMenuItem(value: s.id, child: Text(s.name)))
-                .toList(),
+            stores: _storesForBrand,
+            value: _storeId,
+            enabled: _brandId != null,
+            label: 'Primary store *',
+            helperText: _brandId == null ? 'Choose a brand first' : null,
             validator: (v) => v == null ? 'Primary store is required' : null,
-            onChanged: _brandId == null
-                ? null
-                : (v) => setState(() {
-                      _storeId = v;
-                      _additionalStoreIds.remove(v);
-                    }),
+            onChanged: (v) => setState(() {
+              _storeId = v;
+              _additionalStoreIds.remove(v);
+            }),
           ),
           if (_shown('additional_store_ids')) ...[
             const SizedBox(height: 16),
@@ -1046,43 +1039,72 @@ class _AdditionalStores extends StatelessWidget {
       return;
     }
     final chosen = <int>{};
+    String query = '';
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setLocal) => AlertDialog(
-          title: const Text('Add additional stores'),
-          content: SizedBox(
-            width: 360,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: available
-                  .map((s) => CheckboxListTile(
-                        dense: true,
-                        value: chosen.contains(s.id),
-                        title: Text(s.name),
-                        controlAffinity: ListTileControlAffinity.leading,
-                        onChanged: (v) => setLocal(() {
-                          if (v == true) {
-                            chosen.add(s.id);
-                          } else {
-                            chosen.remove(s.id);
-                          }
-                        }),
-                      ))
-                  .toList(),
+        builder: (ctx, setLocal) {
+          final q = query.trim().toLowerCase();
+          final shown = q.isEmpty
+              ? available
+              : available
+                  .where((s) => s.name.toLowerCase().contains(q))
+                  .toList();
+          return AlertDialog(
+            title: const Text('Add additional stores'),
+            content: SizedBox(
+              width: 360,
+              height: 420,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    autofocus: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Search stores',
+                      prefixIcon: Icon(Icons.search),
+                      isDense: true,
+                    ),
+                    onChanged: (v) => setLocal(() => query = v),
+                  ),
+                  const SizedBox(height: 8),
+                  Expanded(
+                    child: shown.isEmpty
+                        ? const Center(child: Text('No stores match.'))
+                        : ListView(
+                            children: shown
+                                .map((s) => CheckboxListTile(
+                                      dense: true,
+                                      value: chosen.contains(s.id),
+                                      title: Text(s.name),
+                                      controlAffinity:
+                                          ListTileControlAffinity.leading,
+                                      onChanged: (v) => setLocal(() {
+                                        if (v == true) {
+                                          chosen.add(s.id);
+                                        } else {
+                                          chosen.remove(s.id);
+                                        }
+                                      }),
+                                    ))
+                                .toList(),
+                          ),
+                  ),
+                ],
+              ),
             ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('OK'),
-            ),
-          ],
-        ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text('OK'),
+              ),
+            ],
+          );
+        },
       ),
     );
     if (confirmed == true && chosen.isNotEmpty) {
@@ -1127,6 +1149,151 @@ class _AdditionalStores extends StatelessWidget {
                     fontSize: 12,
                     color: Theme.of(context).colorScheme.error)),
           ),
+      ],
+    );
+  }
+}
+
+/// Single-select store picker rendered as a form field. Tapping it opens a
+/// searchable dialog instead of the default full-screen dropdown menu, which is
+/// unwieldy once a brand has many stores.
+class _StoreSearchField extends StatelessWidget {
+  final List<Store> stores;
+  final int? value;
+  final bool enabled;
+  final String label;
+  final String? helperText;
+  final String? Function(int?)? validator;
+  final ValueChanged<int?> onChanged;
+  const _StoreSearchField({
+    super.key,
+    required this.stores,
+    required this.value,
+    required this.enabled,
+    required this.label,
+    required this.onChanged,
+    this.helperText,
+    this.validator,
+  });
+
+  String? _nameOf(int? id) {
+    if (id == null) return null;
+    for (final s in stores) {
+      if (s.id == id) return s.name;
+    }
+    return 'Store $id';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FormField<int>(
+      initialValue: value,
+      validator: validator,
+      builder: (state) {
+        final cs = Theme.of(context).colorScheme;
+        final name = _nameOf(state.value);
+        return InkWell(
+          onTap: enabled
+              ? () async {
+                  final picked = await showDialog<int>(
+                    context: context,
+                    builder: (_) =>
+                        _StoreSearchDialog(stores: stores, current: state.value),
+                  );
+                  if (picked != null) {
+                    state.didChange(picked);
+                    onChanged(picked);
+                  }
+                }
+              : null,
+          borderRadius: BorderRadius.circular(4),
+          child: InputDecorator(
+            isEmpty: name == null,
+            decoration: InputDecoration(
+              labelText: label,
+              helperText: helperText,
+              errorText: state.errorText,
+              enabled: enabled,
+              suffixIcon: Icon(Icons.search,
+                  color: enabled ? null : cs.onSurface.withOpacity(0.38)),
+            ),
+            child: name == null ? null : Text(name),
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// The searchable list shown by [_StoreSearchField]. Pops the chosen store id,
+/// or null on cancel.
+class _StoreSearchDialog extends StatefulWidget {
+  final List<Store> stores;
+  final int? current;
+  const _StoreSearchDialog({required this.stores, required this.current});
+
+  @override
+  State<_StoreSearchDialog> createState() => _StoreSearchDialogState();
+}
+
+class _StoreSearchDialogState extends State<_StoreSearchDialog> {
+  String _query = '';
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final q = _query.trim().toLowerCase();
+    final shown = q.isEmpty
+        ? widget.stores
+        : widget.stores
+            .where((s) => s.name.toLowerCase().contains(q))
+            .toList();
+    return AlertDialog(
+      title: const Text('Select store'),
+      content: SizedBox(
+        width: 360,
+        height: 440,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              autofocus: true,
+              decoration: const InputDecoration(
+                labelText: 'Search stores',
+                prefixIcon: Icon(Icons.search),
+                isDense: true,
+              ),
+              onChanged: (v) => setState(() => _query = v),
+            ),
+            const SizedBox(height: 8),
+            Expanded(
+              child: shown.isEmpty
+                  ? const Center(child: Text('No stores match.'))
+                  : ListView.builder(
+                      itemCount: shown.length,
+                      itemBuilder: (context, i) {
+                        final s = shown[i];
+                        final selected = s.id == widget.current;
+                        return ListTile(
+                          dense: true,
+                          title: Text(s.name),
+                          selected: selected,
+                          trailing: selected
+                              ? Icon(Icons.check, color: cs.primary, size: 18)
+                              : null,
+                          onTap: () => Navigator.pop(context, s.id),
+                        );
+                      },
+                    ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
       ],
     );
   }
