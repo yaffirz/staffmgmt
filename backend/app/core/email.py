@@ -10,6 +10,7 @@ those (best-effort), while the admin "send test email" endpoint calls `_deliver`
 directly so it can surface the actual error.
 """
 import logging
+import re
 import smtplib
 import ssl
 from dataclasses import dataclass
@@ -23,6 +24,26 @@ from app.core.config import settings as app_config
 from app.core.database import engine
 
 logger = logging.getLogger("app.email")
+
+# Placeholder tag like <username>. Only letters/underscore-led names match, so
+# ordinary angle-bracket text (URLs, "<3") is left untouched.
+_TAG_RE = re.compile(r"<([a-z_][a-z0-9_]*)>")
+
+
+def render_template(text: str, context: dict) -> str:
+    """Replace <tag> placeholders from `context` in one pass (so a substituted
+    value — e.g. the signature — isn't itself re-scanned). Unknown tags are left
+    as-is."""
+    if not text:
+        return ""
+    return _TAG_RE.sub(
+        lambda m: str(context.get(m.group(1), m.group(0))), text
+    )
+
+
+def signature_for(session: Session, tenant_id: int) -> str:
+    """The configured email signature (may be empty)."""
+    return (get_setting(session, tenant_id, "email_signature") or "").strip()
 
 
 @dataclass

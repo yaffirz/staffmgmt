@@ -125,6 +125,14 @@ Owner: Arif Asad Ali.
   `GET .../reset-password/validate`; tokens in `password_reset_tokens`. Links use
   the `app_base_url` setting ("Public site URL" on Admin → Email; blank = derive
   from request). Email must be enabled (0066) to actually send (changelog 0067).
+- **Editable email templates + signature (done):** Admin → Email → "Email
+  content" edits a global **signature** and the **password-reset** subject/body,
+  with reusable tags substituted at send time — `<username>`, `<email>`,
+  `<reset_link>`, `<expiry_minutes>`, `<signature>`, `<from_name>`, `<site_url>`
+  (`email_signature`/`email_reset_subject`/`email_reset_body` settings;
+  `render_template` in `core/email.py`, single-pass, URL-safe). Reset body force-
+  appends `<reset_link>` if omitted; registration + test emails append the
+  signature (changelog 0068).
 
 - **Admin hub + activity console (done):** the config/admin tiles (Users & Roles,
   Registrations, Audit Logs, Form Settings, Settings, Announcements) now live

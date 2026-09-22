@@ -10,7 +10,7 @@ from sqlmodel import Session
 from app.api.deps import require_roles
 from app.core.app_settings import get_bool, get_setting, set_setting
 from app.core.database import get_session
-from app.core.email import _deliver, load_email_config
+from app.core.email import _deliver, load_email_config, signature_for
 from app.models.models import AuditLogs
 from app.schemas.auth import CurrentUser
 from app.schemas.email import (
@@ -43,6 +43,13 @@ def _read_config(session: Session, tenant_id: int) -> EmailConfigRead:
         email_from=_s("email_from"),
         email_from_name=_s("email_from_name") or "Staff Portal",
         app_base_url=_s("app_base_url"),
+        email_signature=(get_setting(session, tenant_id, "email_signature") or ""),
+        email_reset_subject=(
+            get_setting(session, tenant_id, "email_reset_subject") or ""
+        ),
+        email_reset_body=(
+            get_setting(session, tenant_id, "email_reset_body") or ""
+        ),
         password_set=bool(get_setting(session, tenant_id, "email_password") or ""),
     )
 
@@ -87,6 +94,13 @@ def update_email_config(
         _apply("email_from_name", payload.email_from_name.strip())
     if payload.app_base_url is not None:
         _apply("app_base_url", payload.app_base_url.strip().rstrip("/"))
+    # Template fields keep their whitespace/newlines exactly as typed.
+    if payload.email_signature is not None:
+        _apply("email_signature", payload.email_signature)
+    if payload.email_reset_subject is not None:
+        _apply("email_reset_subject", payload.email_reset_subject)
+    if payload.email_reset_body is not None:
+        _apply("email_reset_body", payload.email_reset_body)
     # Password: only when a non-empty value is supplied (blank = keep existing).
     if payload.email_password:
         _apply("email_password", payload.email_password)
@@ -125,14 +139,15 @@ def send_test_email(
             ok=False,
             detail="Fill in the SMTP host and From address (and Save) first.",
         )
+    body = (
+        "This is a test email from your Staff Portal. "
+        "If you received it, outgoing email is working."
+    )
+    sig = signature_for(session, current.tenant_id)
+    if sig:
+        body = f"{body}\n\n{sig}"
     try:
-        _deliver(
-            cfg,
-            str(payload.to),
-            "Staff Portal — test email",
-            "This is a test email from your Staff Portal. "
-            "If you received it, outgoing email is working.",
-        )
+        _deliver(cfg, str(payload.to), "Staff Portal — test email", body)
     except Exception as exc:  # noqa: BLE001 — report the reason to the admin.
         return TestEmailResult(ok=False, detail=f"{type(exc).__name__}: {exc}")
 

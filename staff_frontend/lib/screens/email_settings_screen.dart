@@ -30,6 +30,9 @@ class _EmailSettingsScreenState extends State<EmailSettingsScreen> {
   final _fromCtrl = TextEditingController();
   final _fromNameCtrl = TextEditingController();
   final _baseUrlCtrl = TextEditingController();
+  final _sigCtrl = TextEditingController();
+  final _resetSubjectCtrl = TextEditingController();
+  final _resetBodyCtrl = TextEditingController();
   final _testCtrl = TextEditingController();
 
   bool _testing = false;
@@ -49,6 +52,9 @@ class _EmailSettingsScreenState extends State<EmailSettingsScreen> {
     _fromCtrl.dispose();
     _fromNameCtrl.dispose();
     _baseUrlCtrl.dispose();
+    _sigCtrl.dispose();
+    _resetSubjectCtrl.dispose();
+    _resetBodyCtrl.dispose();
     _testCtrl.dispose();
     super.dispose();
   }
@@ -71,6 +77,9 @@ class _EmailSettingsScreenState extends State<EmailSettingsScreen> {
         _fromCtrl.text = (cfg['email_from'] as String?) ?? '';
         _fromNameCtrl.text = (cfg['email_from_name'] as String?) ?? 'Staff Portal';
         _baseUrlCtrl.text = (cfg['app_base_url'] as String?) ?? '';
+        _sigCtrl.text = (cfg['email_signature'] as String?) ?? '';
+        _resetSubjectCtrl.text = (cfg['email_reset_subject'] as String?) ?? '';
+        _resetBodyCtrl.text = (cfg['email_reset_body'] as String?) ?? '';
         _passCtrl.clear();
         _loading = false;
       });
@@ -99,6 +108,10 @@ class _EmailSettingsScreenState extends State<EmailSettingsScreen> {
       'email_from': _fromCtrl.text.trim(),
       'email_from_name': _fromNameCtrl.text.trim(),
       'app_base_url': _baseUrlCtrl.text.trim(),
+      // Templates keep their exact whitespace/newlines.
+      'email_signature': _sigCtrl.text,
+      'email_reset_subject': _resetSubjectCtrl.text,
+      'email_reset_body': _resetBodyCtrl.text,
     };
     // Only send the password when the admin typed a new one.
     if (_passCtrl.text.isNotEmpty) {
@@ -314,6 +327,76 @@ class _EmailSettingsScreenState extends State<EmailSettingsScreen> {
                       helperText:
                           'Used to build password-reset links. Leave blank to '
                           'derive from the request.',
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              _card(
+                cs,
+                title: 'Email content',
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: cs.surfaceContainerHighest,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(Icons.info_outline,
+                            size: 16, color: cs.onSurfaceVariant),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Tags you can use: <username>, <email>, '
+                            '<reset_link>, <expiry_minutes>, <signature>, '
+                            '<from_name>, <site_url>. They\'re replaced when the '
+                            'email is sent.',
+                            style: TextStyle(
+                                fontSize: 12.5, color: cs.onSurfaceVariant),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  TextField(
+                    controller: _sigCtrl,
+                    minLines: 2,
+                    maxLines: 5,
+                    decoration: const InputDecoration(
+                      labelText: 'Signature',
+                      alignLabelWithHint: true,
+                      hintText: 'Best regards,\nThe GBG Team',
+                      helperText:
+                          'Appended to emails, and inserted at <signature>.',
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  const Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text('Password-reset email',
+                        style: TextStyle(
+                            fontSize: 13, fontWeight: FontWeight.w600)),
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: _resetSubjectCtrl,
+                    decoration: const InputDecoration(labelText: 'Subject'),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _resetBodyCtrl,
+                    minLines: 6,
+                    maxLines: 14,
+                    decoration: const InputDecoration(
+                      labelText: 'Body',
+                      alignLabelWithHint: true,
+                      helperText:
+                          'Include <reset_link> — if omitted, the link is added '
+                          'automatically so the email is never unusable.',
                     ),
                   ),
                 ],

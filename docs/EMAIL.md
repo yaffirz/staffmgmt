@@ -56,6 +56,34 @@ With email enabled, users can reset their own password:
 If email sending is **off**, the reset token is still created but no mail goes
 out (the link is only logged) — so turn sending on for this to be usable.
 
+## Email content (templates + signature)
+
+The **Email content** card on the Email page controls what emails say:
+
+- **Signature** — appended to platform emails (and inserted anywhere you put the
+  `<signature>` tag). Leave blank for none.
+- **Password-reset email** — an editable **Subject** and **Body**.
+
+**Tags** are replaced when the email is sent:
+
+| Tag | Becomes |
+| --- | --- |
+| `<username>` | the recipient's username |
+| `<email>` | the recipient's email |
+| `<reset_link>` | the reset link (reset email only) |
+| `<expiry_minutes>` | link lifetime, e.g. `60` |
+| `<signature>` | the signature above |
+| `<from_name>` | the configured From name |
+| `<site_url>` | the public site URL |
+
+Notes:
+- If the reset **Body** omits `<reset_link>`, the link is appended automatically,
+  so a mis-edited template can never send an unusable reset email.
+- Ordinary angle-bracket text (URLs like `<https://…>`, `<3`) is left alone —
+  only known tag names are substituted.
+- The **Send test email** includes the signature, so you can preview it.
+- Unknown tags (e.g. a typo `<usrname>`) are left in the text as-is.
+
 ## Deliverability (SPF / DKIM)
 
 Because mail relays through Yahoo's own servers on your own domain, SPF is

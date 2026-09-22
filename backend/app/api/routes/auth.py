@@ -8,7 +8,7 @@ from sqlmodel import Session, select
 from app.api.deps import get_current_user
 from app.core.app_settings import get_setting
 from app.core.database import get_session
-from app.core.email import send_email
+from app.core.email import render_template, send_email, signature_for
 from app.core.security import create_access_token, hash_password, verify_password
 from app.models.models import (
     AreaManagerBrands,
@@ -201,14 +201,29 @@ def forgot_password(
     base = (get_setting(session, user.tenant_id, "app_base_url") or "").strip()
     base = base.rstrip("/") or str(request.base_url).rstrip("/")
     link = f"{base}/?reset_token={token}"
-    send_email(
-        user.email,
-        "Reset your Staff Portal password",
-        "We received a request to reset your Staff Portal password.\n\n"
-        f"Reset it here (link valid for {RESET_TOKEN_TTL_MINUTES} minutes):\n{link}\n\n"
-        "If you didn't request this, you can ignore this email — your password "
-        "won't change.",
+
+    # Render the admin-editable template. Placeholders are substituted from the
+    # context; the link is force-appended if the template omits <reset_link>, so
+    # a mis-edited template can never send a reset email with no way to reset.
+    ctx = {
+        "username": user.username,
+        "email": user.email or "",
+        "reset_link": link,
+        "expiry_minutes": str(RESET_TOKEN_TTL_MINUTES),
+        "signature": signature_for(session, user.tenant_id),
+        "from_name": get_setting(session, user.tenant_id, "email_from_name")
+        or "Staff Portal",
+        "site_url": base,
+    }
+    subject = render_template(
+        get_setting(session, user.tenant_id, "email_reset_subject") or "", ctx
+    ).strip() or "Reset your Staff Portal password"
+    body = render_template(
+        get_setting(session, user.tenant_id, "email_reset_body") or "", ctx
     )
+    if link not in body:
+        body = f"{body.rstrip()}\n\n{link}".strip()
+    send_email(user.email, subject, body)
     return _FORGOT_NEUTRAL
 
 

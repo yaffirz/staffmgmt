@@ -72,7 +72,34 @@ DEFAULTS: dict[str, str] = {
     # the password-reset link). Empty = derive from the request (works when the
     # app is reached directly; set this when behind a tunnel/proxy).
     "app_base_url": "",
+    # --- Email content / templates --------------------------------------
+    # A signature appended to platform emails. Placed wherever <signature>
+    # appears in a template (and after the body of non-templated emails).
+    "email_signature": "",
+    # Password-reset email. Supports the tags <username>, <email>,
+    # <reset_link>, <expiry_minutes>, <signature>, <from_name>, <site_url>.
+    "email_reset_subject": "Reset your Staff Portal password",
+    "email_reset_body": (
+        "Hi <username>,\n\n"
+        "We received a request to reset your Staff Portal password.\n\n"
+        "Reset it here (link valid for <expiry_minutes> minutes):\n"
+        "<reset_link>\n\n"
+        "If you didn't request this, you can ignore this email — your "
+        "password won't change.\n\n"
+        "<signature>"
+    ),
 }
+
+# Placeholder tags available in email templates, for the admin UI hint.
+EMAIL_TEMPLATE_TAGS = (
+    "username",
+    "email",
+    "reset_link",
+    "expiry_minutes",
+    "signature",
+    "from_name",
+    "site_url",
+)
 
 # Email settings that are safe to expose to admins via the config API (the
 # password is deliberately excluded — see routes/email_admin.py).
