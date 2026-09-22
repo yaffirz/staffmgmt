@@ -8,6 +8,7 @@ import 'admin_backups_screen.dart';
 import 'admin_console_screen.dart';
 import 'announcements_screen.dart';
 import 'audit_logs_screen.dart';
+import 'email_settings_screen.dart';
 import 'form_settings_screen.dart';
 import 'registrations_screen.dart';
 import 'settings_screen.dart';
@@ -73,6 +74,13 @@ class AdminHubScreen extends StatelessWidget {
           title: 'Backups',
           subtitle: 'Back up & schedule the database',
           onTap: () => _go(context, const AdminBackupsScreen()),
+        ),
+      if (isSuper)
+        ModuleCard(
+          icon: Icons.mail_outline,
+          title: 'Email',
+          subtitle: 'SMTP server & test',
+          onTap: () => _go(context, const EmailSettingsScreen()),
         ),
     ];
 

@@ -526,6 +526,27 @@ class StaffService {
     return (data['value'] as String?) ?? '';
   }
 
+  // ---- Email server settings (Super Admin) -------------------------------
+
+  Future<Map<String, dynamic>> getEmailConfig() async {
+    return await _api.get('/api/v1/email/config') as Map<String, dynamic>;
+  }
+
+  /// Only the provided fields are changed. Omit `email_password` (or pass an
+  /// empty string) to keep the stored one.
+  Future<Map<String, dynamic>> updateEmailConfig(
+      Map<String, dynamic> changes) async {
+    return await _api.put('/api/v1/email/config', changes)
+        as Map<String, dynamic>;
+  }
+
+  /// Returns (ok, detail) — ok=false carries the SMTP error to show the admin.
+  Future<(bool, String)> sendTestEmail(String to) async {
+    final data =
+        await _api.post('/api/v1/email/test', {'to': to}) as Map<String, dynamic>;
+    return ((data['ok'] as bool?) ?? false, (data['detail'] as String?) ?? '');
+  }
+
   // ---- Individual staff page + notes -------------------------------------
 
   Future<StaffPageEmployee> staffPage(int employeeId) async {

@@ -13,6 +13,7 @@ from app.api.routes import (
     auth,
     backups,
     cluster,
+    email_admin,
     employees,
     form_config,
     lookups,
@@ -79,6 +80,7 @@ app.include_router(store_portal.router)
 app.include_router(registration.router)
 app.include_router(backups.router)
 app.include_router(app_dist.router)
+app.include_router(email_admin.router)
 
 
 @app.get("/health", tags=["meta"])

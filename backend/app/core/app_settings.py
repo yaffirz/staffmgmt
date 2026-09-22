@@ -45,7 +45,42 @@ DEFAULTS: dict[str, str] = {
     # New-hire wizard: allow adding a staffer with no email via an "email
     # currently unavailable" checkbox (the row is then flagged for HR).
     "email_unavailable_enabled": "true",
+    # --- Outgoing email (SMTP) -------------------------------------------
+    # Master switch: when off, send_email() is a no-op that only logs (the
+    # historical stub behaviour). Turn on once the server settings below are
+    # filled in and a test email has been received.
+    "email_enabled": "false",
+    # SMTP server. For Turbify (Yahoo business mail) this is
+    # smtp.bizmail.yahoo.com. Consumer Yahoo is smtp.mail.yahoo.com.
+    "email_smtp_host": "",
+    # Port: 465 with SSL, or 587 with STARTTLS.
+    "email_smtp_port": "465",
+    # "true" = implicit SSL (port 465); "false" = STARTTLS (port 587).
+    "email_use_ssl": "true",
+    # Login user — usually the full mailbox address. For Yahoo/Turbify use an
+    # app-specific password (below), not the account's main password.
+    "email_username": "",
+    # SMTP password / app password. Sensitive: never returned to the client
+    # (the config API reports only whether it is set).
+    "email_password": "",
+    # The From address. Must be a real mailbox on your domain (Yahoo/Turbify
+    # reject sending "from" an address you don't own).
+    "email_from": "",
+    # Optional display name shown alongside the From address.
+    "email_from_name": "Staff Portal",
 }
+
+# Email settings that are safe to expose to admins via the config API (the
+# password is deliberately excluded — see routes/email_admin.py).
+EMAIL_SETTING_KEYS = (
+    "email_enabled",
+    "email_smtp_host",
+    "email_smtp_port",
+    "email_use_ssl",
+    "email_username",
+    "email_from",
+    "email_from_name",
+)
 
 
 def get_setting(session: Session, tenant_id: int, key: str) -> Optional[str]:

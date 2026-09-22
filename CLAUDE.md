@@ -105,10 +105,17 @@ Owner: Arif Asad Ali.
   (changelog 0036).
 - **Registration foundation (done):** public sign-up → email confirmation →
   admin approval, in a separate `registration_requests` table (existing login
-  untouched). Email **sending is a stub** (`core/email.py` logs the confirm link)
-  until the sending domain is configured; approve/reject in the admin
-  "Registrations" screen; `registration_enabled` toggle (default off) in Settings
-  (changelog 0037).
+  untouched). Approve/reject in the admin "Registrations" screen;
+  `registration_enabled` toggle (default off) in Settings (changelog 0037).
+- **Outgoing email / SMTP (done):** `core/email.py` sends real mail via `smtplib`
+  (best-effort; still a safe no-op when disabled/unconfigured). Config lives in
+  `app_settings` (`email_*`) and is managed from **Admin → Email** (Super Admin):
+  server host/port, SSL vs STARTTLS, username, **write-only** password (never
+  returned), From address/name, an **on/off toggle**, and a **Send test email**
+  button that surfaces the real SMTP error. API: `GET/PUT /api/v1/email/config`,
+  `POST /api/v1/email/test` (`routes/email_admin.py`). Setup steps in
+  `docs/EMAIL.md` (Turbify = `smtp.bizmail.yahoo.com`, app-specific password)
+  (changelog 0066).
 
 - **Admin hub + activity console (done):** the config/admin tiles (Users & Roles,
   Registrations, Audit Logs, Form Settings, Settings, Announcements) now live
