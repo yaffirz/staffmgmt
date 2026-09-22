@@ -9,6 +9,7 @@ best-effort contract callers (e.g. registration) have always relied on.
 those (best-effort), while the admin "send test email" endpoint calls `_deliver`
 directly so it can surface the actual error.
 """
+import html as htmllib
 import logging
 import re
 import smtplib
@@ -42,8 +43,78 @@ def render_template(text: str, context: dict) -> str:
 
 
 def signature_for(session: Session, tenant_id: int) -> str:
-    """The configured email signature (may be empty)."""
+    """The configured email signature (may be empty; may be HTML)."""
     return (get_setting(session, tenant_id, "email_signature") or "").strip()
+
+
+# --- HTML helpers --------------------------------------------------------
+# A private-use sentinel marks where the (possibly HTML) signature goes, so the
+# surrounding plain text can be HTML-escaped without escaping the signature.
+_SIG_SENTINEL = "SIGNATURE"
+_URL_RE = re.compile(r"(https?://[^\s<]+)")
+
+
+def _looks_like_html(s: str) -> bool:
+    """True if the text already contains real HTML tags (so we don't re-escape
+    author-written HTML)."""
+    return bool(re.search(r"<[a-zA-Z!/][^>]*>", s or ""))
+
+
+def _escape_linkify_br(text: str) -> str:
+    """Plain text → safe HTML: escape, linkify http(s) URLs, newlines to <br>."""
+    esc = htmllib.escape(text)
+    esc = _URL_RE.sub(r'<a href="\1">\1</a>', esc)
+    return esc.replace("\n", "<br>\n")
+
+
+def html_to_text(html_str: str) -> str:
+    """Crude HTML → plain text for the multipart fallback part."""
+    t = re.sub(r"(?i)<br\s*/?>", "\n", html_str or "")
+    t = re.sub(r"(?i)</(p|div|tr|h[1-6]|li)>", "\n", t)
+    t = re.sub(r"<[^>]+>", "", t)
+    return htmllib.unescape(t).strip()
+
+
+def _wrap_html(inner: str) -> str:
+    return (
+        '<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;'
+        f'color:#111;line-height:1.5">{inner}</div>'
+    )
+
+
+def compose_message(
+    session: Session,
+    tenant_id: int,
+    body_template: str,
+    context: dict,
+) -> tuple[str, str | None]:
+    """Render a body template (which may contain <signature> and other tags) into
+    a `(text, html_or_None)` pair, honouring the `email_html` toggle.
+
+    - Plain-text mode: returns the rendered text (signature reduced to text) and
+      None.
+    - HTML mode: the signature is inserted as raw HTML at <signature>; the rest of
+      the body is escaped + linkified unless the author already wrote HTML. The
+      text part is derived from the HTML so both stay in sync.
+    """
+    sig = signature_for(session, tenant_id)
+    html_mode = get_bool(session, tenant_id, "email_html")
+
+    if not html_mode:
+        sig_text = html_to_text(sig) if _looks_like_html(sig) else sig
+        text = render_template(body_template, {**context, "signature": sig_text})
+        return text, None
+
+    rendered = render_template(
+        body_template, {**context, "signature": _SIG_SENTINEL}
+    )
+    core = rendered.replace(_SIG_SENTINEL, "")
+    if _looks_like_html(core):
+        inner = rendered.replace(_SIG_SENTINEL, sig)
+    else:
+        inner = _escape_linkify_br(rendered).replace(_SIG_SENTINEL, sig)
+    html = _wrap_html(inner)
+    return html_to_text(html), html
 
 
 @dataclass
@@ -84,8 +155,11 @@ def load_email_config(session: Session, tenant_id: int) -> EmailConfig:
     )
 
 
-def _deliver(cfg: EmailConfig, to: str, subject: str, body: str) -> None:
-    """Send one plaintext email via SMTP. Raises on any failure."""
+def _deliver(
+    cfg: EmailConfig, to: str, subject: str, body: str, html: str | None = None
+) -> None:
+    """Send one email via SMTP. Plain text, or multipart (text + HTML) when
+    `html` is given. Raises on any failure."""
     if not cfg.configured:
         raise RuntimeError("Email server is not configured (host/from missing).")
 
@@ -94,6 +168,8 @@ def _deliver(cfg: EmailConfig, to: str, subject: str, body: str) -> None:
     msg["From"] = formataddr((cfg.from_name, cfg.from_addr))
     msg["To"] = to
     msg.set_content(body)
+    if html:
+        msg.add_alternative(html, subtype="html")
 
     context = ssl.create_default_context()
     if cfg.use_ssl:
@@ -111,10 +187,13 @@ def _deliver(cfg: EmailConfig, to: str, subject: str, body: str) -> None:
             s.send_message(msg)
 
 
-def send_email(to: str, subject: str, body: str) -> None:
+def send_email(
+    to: str, subject: str, body: str, html: str | None = None
+) -> None:
     """Deliver an email, best-effort. Never raises — a failure (or email being
     disabled/unconfigured) is logged and swallowed so callers treat email as
-    optional. For paths that need to know whether it worked, use `_deliver`."""
+    optional. Pass `html` for a multipart HTML message. For paths that need to
+    know whether it worked, use `_deliver`."""
     tenant_id = app_config.DEFAULT_TENANT_ID
     with Session(engine) as session:
         cfg = load_email_config(session, tenant_id)
@@ -128,7 +207,7 @@ def send_email(to: str, subject: str, body: str) -> None:
         )
         return
     try:
-        _deliver(cfg, to, subject, body)
+        _deliver(cfg, to, subject, body, html=html)
         logger.info("EMAIL sent to=%s | %s", to, subject)
     except Exception as exc:  # noqa: BLE001 — best-effort; log and move on.
         logger.warning("EMAIL failed to=%s | %s | %s", to, subject, exc)

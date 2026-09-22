@@ -133,6 +133,13 @@ Owner: Arif Asad Ali.
   `render_template` in `core/email.py`, single-pass, URL-safe). Reset body force-
   appends `<reset_link>` if omitted; registration + test emails append the
   signature (changelog 0068).
+- **HTML emails + formatted signature (done):** `email_html` toggle ("Format
+  emails as HTML" on Admin → Email). When on, emails are multipart (HTML + text
+  fallback) and the signature can be HTML (bold/colour/links/images; images need
+  public URLs). `compose_message` in `core/email.py` inserts the signature raw at
+  `<signature>` (via a sentinel) while plain body text is escaped, URL-linkified,
+  and newline→`<br>`. Signature field becomes "Signature (HTML)"; preview via
+  Send test email (changelog 0069).
 
 - **Admin hub + activity console (done):** the config/admin tiles (Users & Roles,
   Registrations, Audit Logs, Form Settings, Settings, Announcements) now live

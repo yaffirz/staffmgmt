@@ -73,8 +73,13 @@ DEFAULTS: dict[str, str] = {
     # app is reached directly; set this when behind a tunnel/proxy).
     "app_base_url": "",
     # --- Email content / templates --------------------------------------
+    # Format outgoing emails as HTML (multipart: an HTML part + a plain-text
+    # fallback). Enables a formatted signature (bold/colour/links/images). When
+    # off, emails are plain text (the historical behaviour).
+    "email_html": "false",
     # A signature appended to platform emails. Placed wherever <signature>
-    # appears in a template (and after the body of non-templated emails).
+    # appears in a template (and after the body of non-templated emails). May be
+    # HTML when email_html is on.
     "email_signature": "",
     # Password-reset email. Supports the tags <username>, <email>,
     # <reset_link>, <expiry_minutes>, <signature>, <from_name>, <site_url>.

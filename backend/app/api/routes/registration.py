@@ -19,7 +19,7 @@ from app.api.routes.users import (
 )
 from app.core.app_settings import get_bool
 from app.core.database import get_session
-from app.core.email import send_email, signature_for
+from app.core.email import compose_message, send_email
 from app.core.security import hash_password
 from app.models.models import (
     ALLOWED_ROLES as MODEL_ALLOWED_ROLES,
@@ -128,11 +128,13 @@ def register(payload: RegisterRequest, session: Session = Depends(get_session)):
     session.add(req)
     session.commit()
     confirm = f"/api/v1/register/confirm?token={token}"
-    body = f"Confirm your email address to continue: {confirm}"
-    sig = signature_for(session, _TENANT_ID)
-    if sig:
-        body = f"{body}\n\n{sig}"
-    send_email(email, "Confirm your Staff Portal registration", body)
+    body_tpl = (
+        f"Confirm your email address to continue: {confirm}\n\n<signature>"
+    )
+    text, html = compose_message(session, _TENANT_ID, body_tpl, {})
+    send_email(
+        email, "Confirm your Staff Portal registration", text, html=html
+    )
     return _NEUTRAL
 
 

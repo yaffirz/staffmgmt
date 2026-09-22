@@ -60,9 +60,27 @@ out (the link is only logged) — so turn sending on for this to be usable.
 
 The **Email content** card on the Email page controls what emails say:
 
+- **Format emails as HTML** — off = plain text (default). On = emails are sent as
+  HTML (with a plain-text fallback), so the **signature** can be formatted
+  (bold/colour/links/images).
 - **Signature** — appended to platform emails (and inserted anywhere you put the
-  `<signature>` tag). Leave blank for none.
+  `<signature>` tag). Leave blank for none. In HTML mode, paste the **HTML source**
+  of your signature.
 - **Password-reset email** — an editable **Subject** and **Body**.
+
+### HTML signature
+
+Turn on **Format emails as HTML**, then paste your signature's **HTML source**
+into the Signature box (e.g. `<div><b>Arif Ali</b><br>IT Technician…</div>`).
+Notes:
+- **Images must be public URLs** (`<img src="https://…">`). Email clients often
+  block remote images until the reader clicks "show images" — that's normal.
+- The rest of the email (the reset body) can stay plain text — it's escaped,
+  URLs are made clickable, and line breaks are kept automatically. Only the
+  signature carries your HTML.
+- **Send a test email** to yourself to preview exactly how it renders.
+- Getting the HTML: most mail providers (incl. Turbify/Yahoo) let you edit the
+  signature and copy its HTML; or ask an admin to build it from your logo URLs.
 
 **Tags** are replaced when the email is sent:
 

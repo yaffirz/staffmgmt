@@ -22,6 +22,7 @@ class _EmailSettingsScreenState extends State<EmailSettingsScreen> {
   bool _enabled = false;
   bool _useSsl = true; // true = SSL (465), false = STARTTLS (587)
   bool _passwordSet = false;
+  bool _htmlOn = false; // format emails as HTML (for a formatted signature)
 
   final _hostCtrl = TextEditingController();
   final _portCtrl = TextEditingController(text: '465');
@@ -77,6 +78,7 @@ class _EmailSettingsScreenState extends State<EmailSettingsScreen> {
         _fromCtrl.text = (cfg['email_from'] as String?) ?? '';
         _fromNameCtrl.text = (cfg['email_from_name'] as String?) ?? 'Staff Portal';
         _baseUrlCtrl.text = (cfg['app_base_url'] as String?) ?? '';
+        _htmlOn = (cfg['email_html'] as bool?) ?? false;
         _sigCtrl.text = (cfg['email_signature'] as String?) ?? '';
         _resetSubjectCtrl.text = (cfg['email_reset_subject'] as String?) ?? '';
         _resetBodyCtrl.text = (cfg['email_reset_body'] as String?) ?? '';
@@ -108,6 +110,7 @@ class _EmailSettingsScreenState extends State<EmailSettingsScreen> {
       'email_from': _fromCtrl.text.trim(),
       'email_from_name': _fromNameCtrl.text.trim(),
       'app_base_url': _baseUrlCtrl.text.trim(),
+      'email_html': _htmlOn,
       // Templates keep their exact whitespace/newlines.
       'email_signature': _sigCtrl.text,
       'email_reset_subject': _resetSubjectCtrl.text,
@@ -336,6 +339,16 @@ class _EmailSettingsScreenState extends State<EmailSettingsScreen> {
                 cs,
                 title: 'Email content',
                 children: [
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('Format emails as HTML'),
+                    subtitle: const Text(
+                        'Enables a formatted signature (bold, colour, links, '
+                        'images). Off = plain text.'),
+                    value: _htmlOn,
+                    onChanged: (v) => setState(() => _htmlOn = v),
+                  ),
+                  const SizedBox(height: 6),
                   Container(
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
@@ -364,14 +377,23 @@ class _EmailSettingsScreenState extends State<EmailSettingsScreen> {
                   const SizedBox(height: 14),
                   TextField(
                     controller: _sigCtrl,
-                    minLines: 2,
-                    maxLines: 5,
-                    decoration: const InputDecoration(
-                      labelText: 'Signature',
+                    minLines: 3,
+                    maxLines: 12,
+                    style: _htmlOn
+                        ? const TextStyle(
+                            fontFamily: 'monospace', fontSize: 12.5)
+                        : null,
+                    decoration: InputDecoration(
+                      labelText: _htmlOn ? 'Signature (HTML)' : 'Signature',
                       alignLabelWithHint: true,
-                      hintText: 'Best regards,\nThe GBG Team',
-                      helperText:
-                          'Appended to emails, and inserted at <signature>.',
+                      hintText: _htmlOn
+                          ? '<div><b>Arif Ali</b><br>IT Technician<br>'
+                              '<a href="https://…">website</a></div>'
+                          : 'Best regards,\nThe GBG Team',
+                      helperText: _htmlOn
+                          ? 'Paste your HTML signature. Images need public URLs. '
+                              'Send a test email to preview it.'
+                          : 'Appended to emails, and inserted at <signature>.',
                     ),
                   ),
                   const SizedBox(height: 20),

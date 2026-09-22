@@ -14,6 +14,7 @@ class EmailConfigRead(BaseModel):
     email_from: str
     email_from_name: str
     app_base_url: str
+    email_html: bool
     email_signature: str
     email_reset_subject: str
     email_reset_body: str
@@ -32,6 +33,7 @@ class EmailConfigUpdate(BaseModel):
     email_from: Optional[str] = None
     email_from_name: Optional[str] = None
     app_base_url: Optional[str] = None
+    email_html: Optional[bool] = None
     email_signature: Optional[str] = None
     email_reset_subject: Optional[str] = None
     email_reset_body: Optional[str] = None

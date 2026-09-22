@@ -8,7 +8,7 @@ from sqlmodel import Session, select
 from app.api.deps import get_current_user
 from app.core.app_settings import get_setting
 from app.core.database import get_session
-from app.core.email import render_template, send_email, signature_for
+from app.core.email import compose_message, render_template, send_email
 from app.core.security import create_access_token, hash_password, verify_password
 from app.models.models import (
     AreaManagerBrands,
@@ -203,27 +203,28 @@ def forgot_password(
     link = f"{base}/?reset_token={token}"
 
     # Render the admin-editable template. Placeholders are substituted from the
-    # context; the link is force-appended if the template omits <reset_link>, so
-    # a mis-edited template can never send a reset email with no way to reset.
+    # context (signature is handled by compose_message so it can carry HTML).
+    tid = user.tenant_id
     ctx = {
         "username": user.username,
         "email": user.email or "",
         "reset_link": link,
         "expiry_minutes": str(RESET_TOKEN_TTL_MINUTES),
-        "signature": signature_for(session, user.tenant_id),
-        "from_name": get_setting(session, user.tenant_id, "email_from_name")
-        or "Staff Portal",
+        "from_name": get_setting(session, tid, "email_from_name") or "Staff Portal",
         "site_url": base,
     }
     subject = render_template(
-        get_setting(session, user.tenant_id, "email_reset_subject") or "", ctx
+        get_setting(session, tid, "email_reset_subject") or "",
+        {**ctx, "signature": ""},
     ).strip() or "Reset your Staff Portal password"
-    body = render_template(
-        get_setting(session, user.tenant_id, "email_reset_body") or "", ctx
-    )
-    if link not in body:
-        body = f"{body.rstrip()}\n\n{link}".strip()
-    send_email(user.email, subject, body)
+
+    body_template = get_setting(session, tid, "email_reset_body") or ""
+    # Force the link in if a mis-edited template dropped <reset_link>, so a reset
+    # email can never go out with no way to reset.
+    if "<reset_link>" not in body_template:
+        body_template = f"{body_template.rstrip()}\n\n<reset_link>".strip()
+    text, html = compose_message(session, tid, body_template, ctx)
+    send_email(user.email, subject, text, html=html)
     return _FORGOT_NEUTRAL
 
 
