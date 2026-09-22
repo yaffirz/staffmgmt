@@ -68,6 +68,10 @@ DEFAULTS: dict[str, str] = {
     "email_from": "",
     # Optional display name shown alongside the From address.
     "email_from_name": "Staff Portal",
+    # Public base URL of the app, used to build absolute links in emails (e.g.
+    # the password-reset link). Empty = derive from the request (works when the
+    # app is reached directly; set this when behind a tunnel/proxy).
+    "app_base_url": "",
 }
 
 # Email settings that are safe to expose to admins via the config API (the

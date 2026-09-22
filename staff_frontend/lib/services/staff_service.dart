@@ -206,6 +206,7 @@ class StaffService {
     List<String>? additionalRoles,
     bool mustChangePassword = false,
     bool suspended = false,
+    bool emailOptIn = true,
   }) async {
     final body = <String, dynamic>{
       'username': username,
@@ -214,6 +215,7 @@ class StaffService {
       'role': role,
       'must_change_password': mustChangePassword,
       'suspended': suspended,
+      'email_opt_in': emailOptIn,
     };
     if (brandIds != null) body['brand_ids'] = brandIds;
     if (storeId != null) body['store_id'] = storeId;
@@ -234,6 +236,7 @@ class StaffService {
     List<String>? additionalRoles,
     bool? mustChangePassword,
     bool? suspended,
+    bool? emailOptIn,
   }) async {
     final body = <String, dynamic>{};
     if (username != null) body['username'] = username;
@@ -247,9 +250,37 @@ class StaffService {
       body['must_change_password'] = mustChangePassword;
     }
     if (suspended != null) body['suspended'] = suspended;
+    if (emailOptIn != null) body['email_opt_in'] = emailOptIn;
     final data =
         await _api.patch('/api/v1/users/$userId', body) as Map<String, dynamic>;
     return UserAccount.fromJson(data);
+  }
+
+  // ---- Password reset (unauthenticated) ----------------------------------
+
+  /// Request a reset link. Always succeeds (neutral) — never reveals whether the
+  /// account exists.
+  Future<void> forgotPassword(String identifier) async {
+    await _api.post('/api/v1/auth/forgot-password', {'identifier': identifier},
+        auth: false);
+  }
+
+  Future<bool> validateResetToken(String token) async {
+    final data = await _api.get(
+      '/api/v1/auth/reset-password/validate?token=${Uri.encodeQueryComponent(token)}',
+      auth: false,
+    ) as Map<String, dynamic>;
+    return (data['valid'] as bool?) ?? false;
+  }
+
+  /// Complete a reset with a token from the emailed link. Throws ApiException
+  /// (400 invalid/expired, 422 too short).
+  Future<void> resetPassword(String token, String newPassword) async {
+    await _api.post(
+      '/api/v1/auth/reset-password',
+      {'token': token, 'new_password': newPassword},
+      auth: false,
+    );
   }
 
   Future<void> deleteUser(int userId) async {

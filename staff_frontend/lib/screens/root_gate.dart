@@ -10,6 +10,7 @@ import 'authenticated_home.dart';
 import 'force_password_change_screen.dart';
 import 'login_screen.dart';
 import 'maintenance_screen.dart';
+import 'reset_password_screen.dart';
 import 'server_setup_screen.dart';
 
 /// Routing core. Layers, in order:
@@ -32,6 +33,14 @@ class RootGate extends StatefulWidget {
 
 class _RootGateState extends State<RootGate> {
   bool _autoLoginStarted = false;
+  // A reset token from the email link (`/?reset_token=…`), captured once at
+  // startup. While set, the reset screen takes over (unauthenticated).
+  String? _resetToken = _initialResetToken();
+
+  static String? _initialResetToken() {
+    final t = Uri.base.queryParameters['reset_token'];
+    return (t != null && t.isNotEmpty) ? t : null;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -44,6 +53,15 @@ class _RootGateState extends State<RootGate> {
       // Reset so reconfiguring the server re-runs auto-login afterwards.
       _autoLoginStarted = false;
       return const ServerSetupScreen();
+    }
+
+    // A password-reset link takes precedence over the normal login flow. The
+    // token authorises exactly one action; onDone drops it and returns to login.
+    if (_resetToken != null) {
+      return ResetPasswordScreen(
+        token: _resetToken!,
+        onDone: () => setState(() => _resetToken = null),
+      );
     }
 
     // Server is configured — kick off the one-time auto-login.

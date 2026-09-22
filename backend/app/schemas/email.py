@@ -13,6 +13,7 @@ class EmailConfigRead(BaseModel):
     email_username: str
     email_from: str
     email_from_name: str
+    app_base_url: str
     password_set: bool
 
 
@@ -27,6 +28,7 @@ class EmailConfigUpdate(BaseModel):
     email_password: Optional[str] = None
     email_from: Optional[str] = None
     email_from_name: Optional[str] = None
+    app_base_url: Optional[str] = None
 
 
 class TestEmailRequest(BaseModel):

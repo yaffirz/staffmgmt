@@ -29,6 +29,7 @@ class _EmailSettingsScreenState extends State<EmailSettingsScreen> {
   final _passCtrl = TextEditingController();
   final _fromCtrl = TextEditingController();
   final _fromNameCtrl = TextEditingController();
+  final _baseUrlCtrl = TextEditingController();
   final _testCtrl = TextEditingController();
 
   bool _testing = false;
@@ -47,6 +48,7 @@ class _EmailSettingsScreenState extends State<EmailSettingsScreen> {
     _passCtrl.dispose();
     _fromCtrl.dispose();
     _fromNameCtrl.dispose();
+    _baseUrlCtrl.dispose();
     _testCtrl.dispose();
     super.dispose();
   }
@@ -68,6 +70,7 @@ class _EmailSettingsScreenState extends State<EmailSettingsScreen> {
         _userCtrl.text = (cfg['email_username'] as String?) ?? '';
         _fromCtrl.text = (cfg['email_from'] as String?) ?? '';
         _fromNameCtrl.text = (cfg['email_from_name'] as String?) ?? 'Staff Portal';
+        _baseUrlCtrl.text = (cfg['app_base_url'] as String?) ?? '';
         _passCtrl.clear();
         _loading = false;
       });
@@ -95,6 +98,7 @@ class _EmailSettingsScreenState extends State<EmailSettingsScreen> {
       'email_username': _userCtrl.text.trim(),
       'email_from': _fromCtrl.text.trim(),
       'email_from_name': _fromNameCtrl.text.trim(),
+      'app_base_url': _baseUrlCtrl.text.trim(),
     };
     // Only send the password when the admin typed a new one.
     if (_passCtrl.text.isNotEmpty) {
@@ -298,6 +302,18 @@ class _EmailSettingsScreenState extends State<EmailSettingsScreen> {
                     decoration: const InputDecoration(
                       labelText: 'From name',
                       hintText: 'Staff Portal',
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _baseUrlCtrl,
+                    keyboardType: TextInputType.url,
+                    decoration: const InputDecoration(
+                      labelText: 'Public site URL (for links in emails)',
+                      hintText: 'https://gbgstaff.atmix.io',
+                      helperText:
+                          'Used to build password-reset links. Leave blank to '
+                          'derive from the request.',
                     ),
                   ),
                 ],

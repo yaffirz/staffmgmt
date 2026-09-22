@@ -116,6 +116,15 @@ Owner: Arif Asad Ali.
   `POST /api/v1/email/test` (`routes/email_admin.py`). Setup steps in
   `docs/EMAIL.md` (Turbify = `smtp.bizmail.yahoo.com`, app-specific password)
   (changelog 0066).
+- **Per-user email opt-in + password reset (done):** each account has a
+  `users.email_opt_in` toggle in Users & Roles ("Receives platform email").
+  Self-service reset: **Forgot password?** on login emails a **single-use,
+  60-min** link (`/?reset_token=…`) → `ResetPasswordScreen` (intercepted in
+  `RootGate` by query param) → new password. Endpoints
+  `POST /api/v1/auth/forgot-password` (neutral response), `.../reset-password`,
+  `GET .../reset-password/validate`; tokens in `password_reset_tokens`. Links use
+  the `app_base_url` setting ("Public site URL" on Admin → Email; blank = derive
+  from request). Email must be enabled (0066) to actually send (changelog 0067).
 
 - **Admin hub + activity console (done):** the config/admin tiles (Users & Roles,
   Registrations, Audit Logs, Form Settings, Settings, Announcements) now live

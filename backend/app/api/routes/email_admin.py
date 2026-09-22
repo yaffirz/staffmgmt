@@ -42,6 +42,7 @@ def _read_config(session: Session, tenant_id: int) -> EmailConfigRead:
         email_username=_s("email_username"),
         email_from=_s("email_from"),
         email_from_name=_s("email_from_name") or "Staff Portal",
+        app_base_url=_s("app_base_url"),
         password_set=bool(get_setting(session, tenant_id, "email_password") or ""),
     )
 
@@ -84,6 +85,8 @@ def update_email_config(
         _apply("email_from", payload.email_from.strip())
     if payload.email_from_name is not None:
         _apply("email_from_name", payload.email_from_name.strip())
+    if payload.app_base_url is not None:
+        _apply("app_base_url", payload.app_base_url.strip().rstrip("/"))
     # Password: only when a non-empty value is supplied (blank = keep existing).
     if payload.email_password:
         _apply("email_password", payload.email_password)

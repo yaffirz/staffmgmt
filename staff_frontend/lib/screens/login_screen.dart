@@ -9,6 +9,7 @@ import '../theme/app_theme.dart';
 import '../widgets/app_logo.dart';
 import '../widgets/app_scaffold.dart';
 import '../widgets/marketing_block.dart';
+import 'forgot_password_screen.dart';
 import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -160,7 +161,22 @@ class _LoginScreenState extends State<LoginScreen> {
             const SizedBox(height: 16),
             _ErrorBanner(message: auth.error!),
           ],
-          const SizedBox(height: 24),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton(
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(
+                    builder: (_) => const ForgotPasswordScreen()),
+              ),
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                minimumSize: const Size(0, 36),
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              child: const Text('Forgot password?'),
+            ),
+          ),
+          const SizedBox(height: 12),
           FilledButton(
             onPressed: busy ? null : () => _submit(busy),
             child: busy

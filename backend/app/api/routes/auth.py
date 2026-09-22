@@ -1,25 +1,48 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+import secrets
+from datetime import datetime, timedelta, timezone
+
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import func, or_
 from sqlmodel import Session, select
 
 from app.api.deps import get_current_user
+from app.core.app_settings import get_setting
 from app.core.database import get_session
+from app.core.email import send_email
 from app.core.security import create_access_token, hash_password, verify_password
 from app.models.models import (
     AreaManagerBrands,
     AreaManagers,
     Brands,
+    PasswordResetTokens,
     UserRoles,
     Users,
 )
 from app.schemas.auth import (
     ChangePasswordRequest,
     CurrentUser,
+    ForgotPasswordRequest,
     LoginRequest,
+    ResetPasswordRequest,
     TokenResponse,
 )
 
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
+
+# How long a password-reset link stays valid.
+RESET_TOKEN_TTL_MINUTES = 60
+
+# Same message whether or not the account exists — never reveal which emails are
+# registered.
+_FORGOT_NEUTRAL = {
+    "detail": "If an account with that email exists, a reset link has been sent."
+}
+
+
+def _naive_utcnow() -> datetime:
+    """Naive UTC 'now' — matches how timestamps read back from the DB, so
+    expiry comparisons don't mix aware/naive datetimes."""
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 def effective_roles(session: Session, user: Users) -> list[str]:
@@ -118,6 +141,124 @@ def change_password(
     session.commit()
     current.must_change_password = False
     return current
+
+
+@router.post("/forgot-password")
+def forgot_password(
+    payload: ForgotPasswordRequest,
+    request: Request,
+    session: Session = Depends(get_session),
+):
+    """Start a password reset: email a timed, single-use link to the account.
+    Always returns the same neutral message so it can't be used to probe which
+    emails have accounts. No-ops when the account has no email, has opted out of
+    platform email, or is suspended."""
+    ident = (payload.identifier or "").strip()
+    if not ident:
+        return _FORGOT_NEUTRAL
+    lowered = ident.lower()
+    matches = session.exec(
+        select(Users).where(
+            or_(
+                func.lower(Users.username) == lowered,
+                func.lower(Users.email) == lowered,
+            )
+        )
+    ).all()
+    user = next(
+        (u for u in matches if u.username == ident or (u.email or "") == ident),
+        matches[0] if matches else None,
+    )
+    if (
+        user is None
+        or not user.email
+        or not user.email_opt_in
+        or user.suspended
+    ):
+        return _FORGOT_NEUTRAL
+
+    # Invalidate any outstanding reset tokens for this user, then issue a fresh one.
+    for row in session.exec(
+        select(PasswordResetTokens).where(
+            PasswordResetTokens.user_id == user.user_id,
+            PasswordResetTokens.used == False,  # noqa: E712
+        )
+    ).all():
+        row.used = True
+        session.add(row)
+
+    token = secrets.token_urlsafe(32)
+    session.add(
+        PasswordResetTokens(
+            tenant_id=user.tenant_id,
+            user_id=user.user_id,
+            token=token,
+            expires_at=_naive_utcnow() + timedelta(minutes=RESET_TOKEN_TTL_MINUTES),
+        )
+    )
+    session.commit()
+
+    base = (get_setting(session, user.tenant_id, "app_base_url") or "").strip()
+    base = base.rstrip("/") or str(request.base_url).rstrip("/")
+    link = f"{base}/?reset_token={token}"
+    send_email(
+        user.email,
+        "Reset your Staff Portal password",
+        "We received a request to reset your Staff Portal password.\n\n"
+        f"Reset it here (link valid for {RESET_TOKEN_TTL_MINUTES} minutes):\n{link}\n\n"
+        "If you didn't request this, you can ignore this email — your password "
+        "won't change.",
+    )
+    return _FORGOT_NEUTRAL
+
+
+@router.get("/reset-password/validate")
+def validate_reset_token(
+    token: str, session: Session = Depends(get_session)
+):
+    """Lightweight check so the reset screen can show 'link expired' without
+    submitting a new password."""
+    row = session.exec(
+        select(PasswordResetTokens).where(PasswordResetTokens.token == token)
+    ).first()
+    valid = bool(row and not row.used and row.expires_at >= _naive_utcnow())
+    return {"valid": valid}
+
+
+@router.post("/reset-password")
+def reset_password(
+    payload: ResetPasswordRequest,
+    session: Session = Depends(get_session),
+):
+    """Complete a reset using a valid, unexpired, single-use token."""
+    if len(payload.new_password) < 6:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Password must be at least 6 characters.",
+        )
+    row = session.exec(
+        select(PasswordResetTokens).where(
+            PasswordResetTokens.token == payload.token
+        )
+    ).first()
+    if row is None or row.used or row.expires_at < _naive_utcnow():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This reset link is invalid or has expired.",
+        )
+    user = session.get(Users, row.user_id)
+    if user is None or user.suspended:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This reset link is invalid or has expired.",
+        )
+    user.password_hash = hash_password(payload.new_password)
+    user.must_change_password = False
+    row.used = True
+    session.add(user)
+    session.add(row)
+    session.commit()
+    return {"detail": "Your password has been reset. You can now sign in."}
 
 
 @router.get("/me/brands")

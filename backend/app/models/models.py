@@ -141,6 +141,9 @@ class Users(SQLModel, table=True):
     # When true, the account is suspended: it cannot log in and any live session
     # is rejected on its next request. Reversible. Non-destructive migration.
     suspended: bool = Field(default=False)
+    # When true, this account receives emails from the platform (e.g. password
+    # reset links). Managed in Users & Roles. Non-destructive migration.
+    email_opt_in: bool = Field(default=True)
 
 
 class UserRoles(SQLModel, table=True):
@@ -366,6 +369,22 @@ class RegistrationRequests(SQLModel, table=True):
     note: Optional[str] = Field(default=None)
     created_at: datetime = Field(default_factory=utcnow)
     reviewed_by: Optional[int] = Field(default=None, foreign_key="users.user_id")
+
+
+class PasswordResetTokens(SQLModel, table=True):
+    """Single-use, time-limited tokens for the forgot-password flow. A reset link
+    emailed to the user carries the token; it authenticates a one-off password
+    reset and nothing else."""
+
+    __tablename__ = "password_reset_tokens"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    tenant_id: int = Field(default=1, index=True)
+    user_id: int = Field(foreign_key="users.user_id", index=True)
+    token: str = Field(index=True)
+    expires_at: datetime
+    used: bool = Field(default=False)
+    created_at: datetime = Field(default_factory=utcnow)
 
 
 class Backups(SQLModel, table=True):

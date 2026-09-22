@@ -137,6 +137,7 @@ class _UsersScreenState extends State<UsersScreen> {
     bool obscurePw = true; // shared reveal toggle for both password fields
     bool mustChange = editing?.mustChangePassword ?? false;
     bool suspended = editing?.suspended ?? false;
+    bool emailOptIn = editing?.emailOptIn ?? true;
     bool isStoreRole(String r) => r == 'Store' || r == 'Foodmall';
 
     final saved = await showDialog<bool>(
@@ -194,6 +195,8 @@ class _UsersScreenState extends State<UsersScreen> {
                           : null,
                   suspended:
                       suspended != editing.suspended ? suspended : null,
+                  emailOptIn:
+                      emailOptIn != editing.emailOptIn ? emailOptIn : null,
                 );
               } else {
                 await svc.createUser(
@@ -205,6 +208,7 @@ class _UsersScreenState extends State<UsersScreen> {
                   storeId: isStoreRole(role) ? storeId : null,
                   additionalRoles: extraRoles,
                   mustChangePassword: mustChange,
+                  emailOptIn: emailOptIn,
                 );
               }
               if (ctx.mounted) Navigator.pop(ctx, true);
@@ -279,6 +283,17 @@ class _UsersScreenState extends State<UsersScreen> {
                       title: const Text('Require password change at next login'),
                       subtitle: const Text(
                         'The user must set a new password before using the app.',
+                        style: TextStyle(fontSize: 12),
+                      ),
+                    ),
+                    SwitchListTile(
+                      value: emailOptIn,
+                      onChanged: (v) => setLocal(() => emailOptIn = v),
+                      dense: true,
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Receives platform email'),
+                      subtitle: const Text(
+                        'Send this account emails such as password-reset links.',
                         style: TextStyle(fontSize: 12),
                       ),
                     ),

@@ -208,6 +208,7 @@ def _read(session: Session, user: Users) -> UserRead:
         store_name=store_name,
         must_change_password=user.must_change_password,
         suspended=user.suspended,
+        email_opt_in=user.email_opt_in,
     )
 
 
@@ -288,6 +289,7 @@ def create_user(
         role=payload.role,
         must_change_password=payload.must_change_password,
         suspended=payload.suspended,
+        email_opt_in=payload.email_opt_in,
     )
     session.add(user)
     session.commit()
@@ -412,6 +414,10 @@ def update_user(
             )
         user.suspended = payload.suspended
         changes["suspended"] = payload.suspended
+
+    if payload.email_opt_in is not None and payload.email_opt_in != user.email_opt_in:
+        user.email_opt_in = payload.email_opt_in
+        changes["email_opt_in"] = payload.email_opt_in
 
     if changes:
         session.add(user)

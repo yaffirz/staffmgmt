@@ -11,6 +11,7 @@ class UserAccount {
   final String? storeName;
   final bool mustChangePassword;
   final bool suspended;
+  final bool emailOptIn;
 
   const UserAccount({
     required this.userId,
@@ -25,6 +26,7 @@ class UserAccount {
     this.storeName,
     this.mustChangePassword = false,
     this.suspended = false,
+    this.emailOptIn = true,
   });
 
   factory UserAccount.fromJson(Map<String, dynamic> j) {
@@ -51,6 +53,7 @@ class UserAccount {
       storeName: j['store_name'] as String?,
       mustChangePassword: (j['must_change_password'] as bool?) ?? false,
       suspended: (j['suspended'] as bool?) ?? false,
+      emailOptIn: (j['email_opt_in'] as bool?) ?? true,
     );
   }
 }

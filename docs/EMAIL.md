@@ -27,6 +27,35 @@ credentials without a redeploy.
    sending is off, and shows the exact SMTP error if something is wrong.
 6. Once the test arrives, turn **Email sending enabled** on and Save.
 
+## Public site URL (for links in emails)
+
+Emails that contain a link (e.g. **password reset**) need the app's public
+address. Set **Public site URL** on the Email page to your real URL
+(`https://gbgstaff.atmix.io`). Leave it blank to derive the link from the
+incoming request — fine for direct access, but behind the Cloudflare tunnel you
+should set it explicitly so links don't come out as `localhost`.
+
+## Who receives email
+
+Each account in **Users & Roles** has a **"Receives platform email"** toggle
+(on by default). Turn it off and that account won't be sent platform emails
+(e.g. password-reset links). An account with no email address, opted out, or
+suspended is silently skipped.
+
+## Password reset
+
+With email enabled, users can reset their own password:
+
+1. On the sign-in screen they click **Forgot password?**, enter their username or
+   email, and submit (the response is always neutral — it never reveals whether
+   an account exists).
+2. They receive a **timed, single-use link** (`/?reset_token=…`, valid 60
+   minutes) and open it to set a new password.
+3. The link works once; after that (or once expired) it shows "link expired".
+
+If email sending is **off**, the reset token is still created but no mail goes
+out (the link is only logged) — so turn sending on for this to be usable.
+
 ## Deliverability (SPF / DKIM)
 
 Because mail relays through Yahoo's own servers on your own domain, SPF is

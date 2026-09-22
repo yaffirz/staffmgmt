@@ -13,6 +13,7 @@ class UserCreate(BaseModel):
     additional_roles: Optional[List[str]] = None  # Super Admin only
     must_change_password: bool = False  # force a change at next login
     suspended: bool = False  # create the account already suspended (rare)
+    email_opt_in: bool = True  # receive platform emails (password resets, etc.)
 
 
 class UserUpdate(BaseModel):
@@ -25,6 +26,7 @@ class UserUpdate(BaseModel):
     additional_roles: Optional[List[str]] = None  # Super Admin only
     must_change_password: Optional[bool] = None  # force a change at next login
     suspended: Optional[bool] = None  # suspend / reactivate the account
+    email_opt_in: Optional[bool] = None  # receive platform emails
 
 
 class UserRead(BaseModel):
@@ -40,3 +42,4 @@ class UserRead(BaseModel):
     store_name: Optional[str] = None
     must_change_password: bool = False
     suspended: bool = False
+    email_opt_in: bool = True

@@ -51,6 +51,9 @@ _MIGRATIONS = [
     # "promotion — review" flag and floats the row to the top for IT viewers.
     "ALTER TABLE employees ADD COLUMN IF NOT EXISTS "
     "promotion_pending_review BOOLEAN NOT NULL DEFAULT false",
+    # Per-user opt-in to platform emails (password resets, etc.).
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS "
+    "email_opt_in BOOLEAN NOT NULL DEFAULT true",
 ]
 
 
