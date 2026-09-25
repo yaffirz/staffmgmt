@@ -650,6 +650,9 @@ def update_mag_code(
     old = emp.mag_code
     new = (payload.mag_code or "").strip() or None
     emp.mag_code = new
+    # Auto-clear a "mag_code" review flag when the value actually changes.
+    if old != new and "mag_code" in (emp.review_fields or []):
+        emp.review_fields = [f for f in emp.review_fields if f != "mag_code"]
     session.add(emp)
     session.commit()
     session.refresh(emp)
@@ -735,6 +738,50 @@ def update_employee(
         "primary_store_id": emp.primary_store_id,
         "position_id": emp.position_id,
     }
+
+    # Auto-clear any Admin/IT review flags whose cell value this edit changes.
+    if emp.review_fields:
+        old_store = (
+            session.get(Stores, emp.primary_store_id)
+            if emp.primary_store_id is not None
+            else None
+        )
+
+        def _n(v):
+            if isinstance(v, str):
+                v = v.strip()
+            return v if v not in ("", None) else None
+
+        cell_old = {
+            "employee_name": _n(emp.employee_name),
+            "payroll_id": _n(emp.payroll_id),
+            "brand": _resolve_brand_id(emp.brand_id, old_store, session),
+            "store": emp.primary_store_id,
+            "position": emp.position_id,
+            "dob": emp.date_of_birth,
+            "email": _n(emp.email),
+            "phone": _n(emp.phone_number),
+            "payrate": emp.payrate,
+            "mag_code": _n(emp.mag_code),
+            "country": emp.country_id,
+        }
+        cell_new = {
+            "employee_name": _n(payload.employee_name),
+            "payroll_id": _n(payload.payroll_id),
+            "brand": resolved_brand_id,
+            "store": payload.primary_store_id,
+            "position": payload.position_id,
+            "dob": payload.date_of_birth,
+            "email": _n(payload.email),
+            "phone": _n(payload.phone_number),
+            "payrate": payload.payrate,
+            "mag_code": _n(payload.mag_code),
+            "country": payload.country_id,
+        }
+        # Keep a flag only while its cell value is unchanged.
+        emp.review_fields = [
+            k for k in emp.review_fields if cell_old.get(k) == cell_new.get(k)
+        ]
 
     emp.payroll_id = payload.payroll_id
     emp.employee_name = payload.employee_name

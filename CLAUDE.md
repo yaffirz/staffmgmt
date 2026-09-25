@@ -196,6 +196,9 @@ Owner: Arif Asad Ali.
   (`reviewed=false`); marking reviewed clears it. `PATCH
   /api/v1/employees/{id}/review-flag` (`REVIEW_FLAG_ROLES`); field keys shared as
   backend `REVIEWABLE_FIELDS` / frontend `kReviewableFields` (changelog 0071).
+  A flag **auto-clears** when its cell value changes on edit — `update_employee`
+  (full form + quick edit) and `set_mag` drop just the changed field's flag
+  (changelog 0072).
 - **Global top bar (done):** the notification bell + theme toggle + log-out appear
   on **every** signed-in page (appended by `AppScaffold`), not just the dashboard
   (changelog 0054).
