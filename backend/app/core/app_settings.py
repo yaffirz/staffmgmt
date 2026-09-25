@@ -45,6 +45,9 @@ DEFAULTS: dict[str, str] = {
     # New-hire wizard: allow adding a staffer with no email via an "email
     # currently unavailable" checkbox (the row is then flagged for HR).
     "email_unavailable_enabled": "true",
+    # Require a real pay rate before a row can be marked reviewed: a pay rate of
+    # 0.00 flags the row amber and blocks review until it's fixed.
+    "payrate_required_for_review": "true",
     # --- Outgoing email (SMTP) -------------------------------------------
     # Master switch: when off, send_email() is a no-op that only logs (the
     # historical stub behaviour). Turn on once the server settings below are

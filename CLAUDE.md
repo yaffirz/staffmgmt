@@ -183,6 +183,12 @@ Owner: Arif Asad Ali.
   no email (`employees.email_pending`); the row is flagged **amber**, IT gets an
   "Email not valid" dialog on review, and it **auto-clears** once an email is
   saved. `email_unavailable_enabled` toggle (changelog 0049).
+- **Pay rate 0.00 flag + review block (done):** a 0.00 pay rate flags the
+  employee row **amber** (same as no-email; amber wins over green) and **blocks
+  marking it reviewed** — enforced in `set_reviewed` (400) and the list (a "Pay
+  rate not set" dialog before the call). Un-reviewing is allowed; only an explicit
+  0.00 is flagged (not None). `payrate_required_for_review` toggle in Settings
+  (default on) (changelog 0070).
 - **Global top bar (done):** the notification bell + theme toggle + log-out appear
   on **every** signed-in page (appended by `AppScaffold`), not just the dashboard
   (changelog 0054).

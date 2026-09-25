@@ -505,6 +505,18 @@ def set_reviewed(
             status_code=status.HTTP_404_NOT_FOUND, detail="Employee not found."
         )
 
+    # A pay rate of 0.00 must be fixed before the row can be reviewed (when the
+    # rule is enabled). Enforced here so the API can't be used to bypass the UI.
+    if (
+        payload.reviewed
+        and emp.payrate == 0
+        and get_bool(session, current.tenant_id, "payrate_required_for_review")
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Set a pay rate above 0.00 before marking this staffer reviewed.",
+        )
+
     old = emp.reviewed
     emp.reviewed = payload.reviewed
     # Stamp the completion time when marked reviewed; clear it when un-reviewed.

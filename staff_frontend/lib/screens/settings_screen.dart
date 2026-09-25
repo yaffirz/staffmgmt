@@ -25,6 +25,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   static const _registrationKey = 'registration_enabled';
   static const _appDownloadKey = 'app_download_enabled';
   static const _emailUnavailKey = 'email_unavailable_enabled';
+  static const _payrateReviewKey = 'payrate_required_for_review';
 
   // Marketing content types (value -> label).
   static const _mktTypes = <String, String>{
@@ -72,6 +73,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   // New-hire "email currently unavailable" option.
   bool _emailUnavailOn = true;
 
+  // Require a pay rate (0.00 blocks review).
+  bool _payrateReviewOn = true;
+
   @override
   void initState() {
     super.initState();
@@ -106,6 +110,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         svc.getSetting(_registrationKey),
         svc.getSetting(_appDownloadKey),
         svc.getSetting(_emailUnavailKey),
+        svc.getSetting(_payrateReviewKey),
       ]);
       if (!mounted) return;
       final untilRaw = results[4];
@@ -124,6 +129,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _registrationOn = results[9].toLowerCase() == 'true';
         _appDownloadOn = results[10].toLowerCase() == 'true';
         _emailUnavailOn = results[11].toLowerCase() == 'true';
+        _payrateReviewOn = results[12].toLowerCase() != 'false';
         _loading = false;
       });
     } catch (_) {
@@ -232,6 +238,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
         (on) => on
             ? 'New hires can be added without an email (flagged for HR).'
             : 'An email is now always required for new hires.',
+      );
+
+  Future<void> _setPayrateReview(bool value) => _setBoolSetting(
+        _payrateReviewKey,
+        value,
+        (v) => _payrateReviewOn = v,
+        (on) => on
+            ? 'A 0.00 pay rate now flags the row and blocks review.'
+            : 'A 0.00 pay rate no longer blocks review.',
       );
 
   Future<void> _setAppDownload(bool value) => _setBoolSetting(
@@ -371,6 +386,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     'provide one, clearing once an email is saved.'),
                 value: _emailUnavailOn,
                 onChanged: _saving ? null : _setEmailUnavail,
+              )),
+              const SizedBox(height: 12),
+              _card(SwitchListTile(
+                title: const Text('Require a pay rate to review'),
+                subtitle: const Text(
+                    'A pay rate of 0.00 flags the employee row amber and blocks '
+                    'it from being marked reviewed until a valid rate is set.'),
+                value: _payrateReviewOn,
+                onChanged: _saving ? null : _setPayrateReview,
               )),
               const SizedBox(height: 24),
               _sectionTitle('Android app'),
