@@ -32,6 +32,7 @@ from app.schemas.employee import (
     EmployeeCreate,
     EmployeeRead,
     MagUpdate,
+    ReviewFlagUpdate,
     ReviewUpdate,
 )
 from app.schemas.lookups import BulkResult, BulkRowError
@@ -42,6 +43,23 @@ router = APIRouter(prefix="/api/v1/employees", tags=["employees"])
 # "admin-lite" and manages staff records (but not deletion — see ADMIN_ROLES).
 WRITE_ROLES = ("Super Admin", "Admin", "HR", "IT")
 ADMIN_ROLES = ("Super Admin", "Admin")
+# Who may flag a row for review (pick which cells need a second look).
+REVIEW_FLAG_ROLES = ("Super Admin", "Admin", "IT")
+
+# Field keys an Admin/IT may flag for review (must match the list UI columns).
+REVIEWABLE_FIELDS = (
+    "employee_name",
+    "payroll_id",
+    "brand",
+    "store",
+    "position",
+    "dob",
+    "email",
+    "phone",
+    "payrate",
+    "mag_code",
+    "country",
+)
 
 
 def _validate_config_required(
@@ -201,6 +219,7 @@ def _enrich(emp: Employees, session: Session) -> EmployeeRead:
         brand_id=brand_id,
         reviewed=emp.reviewed,
         promotion_pending_review=emp.promotion_pending_review,
+        review_fields=list(emp.review_fields or []),
         created_at=emp.created_at,
         created_by=emp.created_by,
         reviewed_at=emp.reviewed_at,
@@ -416,6 +435,7 @@ def list_employees(
                 brand_id=eff_brand_id,
                 reviewed=emp.reviewed,
                 promotion_pending_review=emp.promotion_pending_review,
+                review_fields=list(emp.review_fields or []),
                 created_at=emp.created_at,
                 created_by=emp.created_by,
                 reviewed_at=emp.reviewed_at,
@@ -521,9 +541,11 @@ def set_reviewed(
     emp.reviewed = payload.reviewed
     # Stamp the completion time when marked reviewed; clear it when un-reviewed.
     emp.reviewed_at = utcnow() if payload.reviewed else None
-    # Reviewing clears the "promotion — review" flag (the review has happened).
+    # Reviewing clears the "promotion — review" flag and any Admin/IT review
+    # flags (the review has happened).
     if payload.reviewed:
         emp.promotion_pending_review = False
+        emp.review_fields = []
     session.add(emp)
     session.commit()
     session.refresh(emp)
@@ -544,6 +566,49 @@ def set_reviewed(
     if payload.reviewed and not old:
         _notify_managers_reviewed(session, emp, current)
 
+    return _enrich(emp, session)
+
+
+@router.patch("/{employee_id}/review-flag", response_model=EmployeeRead)
+def set_review_flag(
+    employee_id: int,
+    payload: ReviewFlagUpdate,
+    current: CurrentUser = Depends(require_roles(*REVIEW_FLAG_ROLES)),
+    session: Session = Depends(get_session),
+):
+    """Admin/IT flag the given cells as needing review. A non-empty set puts the
+    row back into review (reviewed = False); an empty set clears the flag."""
+    emp = session.get(Employees, employee_id)
+    if emp is None or emp.tenant_id != current.tenant_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Employee not found."
+        )
+
+    # Keep only known field keys, de-duplicated and in canonical order.
+    wanted = {f for f in (payload.fields or []) if f in REVIEWABLE_FIELDS}
+    fields = [f for f in REVIEWABLE_FIELDS if f in wanted]
+
+    old = list(emp.review_fields or [])
+    emp.review_fields = fields
+    if fields:
+        # Flagged rows are pending — take them out of "reviewed".
+        emp.reviewed = False
+        emp.reviewed_at = None
+    session.add(emp)
+    session.commit()
+    session.refresh(emp)
+
+    session.add(
+        AuditLogs(
+            user_id=current.user_id,
+            action="UPDATE",
+            affected_table="employees",
+            record_id=str(emp.employee_id),
+            old_value={"review_fields": old},
+            new_value={"review_fields": fields},
+        )
+    )
+    session.commit()
     return _enrich(emp, session)
 
 

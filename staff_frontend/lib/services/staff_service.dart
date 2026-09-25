@@ -317,6 +317,15 @@ class StaffService {
     return Employee.fromJson(data);
   }
 
+  /// Admin/IT: flag which cells need review (empty list clears the flag).
+  Future<Employee> setReviewFlag(int employeeId, List<String> fields) async {
+    final data = await _api.patch(
+      '/api/v1/employees/$employeeId/review-flag',
+      {'fields': fields},
+    ) as Map<String, dynamic>;
+    return Employee.fromJson(data);
+  }
+
   /// Suggested next MAG card number (auto-increments from 70000000).
   Future<String?> nextMagCode() async {
     final data =

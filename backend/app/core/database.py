@@ -54,6 +54,9 @@ _MIGRATIONS = [
     # Per-user opt-in to platform emails (password resets, etc.).
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS "
     "email_opt_in BOOLEAN NOT NULL DEFAULT true",
+    # Admin/IT "flag for review": which field keys need a second look.
+    "ALTER TABLE employees ADD COLUMN IF NOT EXISTS "
+    "review_fields JSONB NOT NULL DEFAULT '[]'::jsonb",
 ]
 
 

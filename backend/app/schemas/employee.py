@@ -34,6 +34,11 @@ class ReviewUpdate(BaseModel):
     reviewed: bool
 
 
+class ReviewFlagUpdate(BaseModel):
+    # Field keys to flag as needing review. Empty list clears the flag.
+    fields: list[str] = []
+
+
 class MagUpdate(BaseModel):
     mag_code: Optional[str] = None
 
@@ -56,6 +61,7 @@ class EmployeeRead(BaseModel):
     brand_id: Optional[int]  # effective brand (own, else primary store's)
     reviewed: bool
     promotion_pending_review: bool = False
+    review_fields: list[str] = []  # cells an Admin/IT flagged for review
     created_at: datetime
     created_by: Optional[int] = None
     reviewed_at: Optional[datetime] = None

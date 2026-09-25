@@ -189,6 +189,13 @@ Owner: Arif Asad Ali.
   rate not set" dialog before the call). Un-reviewing is allowed; only an explicit
   0.00 is flagged (not None). `payrate_required_for_review` toggle in Settings
   (default on) (changelog 0070).
+- **Admin/IT "flag cells for review" (done):** a per-row **Flag for review**
+  action (Super Admin / Admin / IT only) picks which cells need a second look
+  (`employees.review_fields` JSONB). Flagged cells get a **purple** highlight, the
+  row is tinted purple (top of the tint precedence) and set back to pending
+  (`reviewed=false`); marking reviewed clears it. `PATCH
+  /api/v1/employees/{id}/review-flag` (`REVIEW_FLAG_ROLES`); field keys shared as
+  backend `REVIEWABLE_FIELDS` / frontend `kReviewableFields` (changelog 0071).
 - **Global top bar (done):** the notification bell + theme toggle + log-out appear
   on **every** signed-in page (appended by `AppScaffold`), not just the dashboard
   (changelog 0054).

@@ -14,6 +14,7 @@ class Employee {
   final int? countryId;
   final bool reviewed;
   final bool promotionPendingReview; // set by a promotion; awaits IT review
+  final List<String> reviewFields; // cells an Admin/IT flagged for review
   final String? storeName;
   final int? brandId;
   final String? brandName;
@@ -42,6 +43,7 @@ class Employee {
     required this.countryId,
     required this.reviewed,
     this.promotionPendingReview = false,
+    this.reviewFields = const [],
     required this.storeName,
     this.brandId,
     required this.brandName,
@@ -72,6 +74,9 @@ class Employee {
         reviewed: (j['reviewed'] as bool?) ?? false,
         promotionPendingReview:
             (j['promotion_pending_review'] as bool?) ?? false,
+        reviewFields: ((j['review_fields'] as List?) ?? const [])
+            .map((e) => e.toString())
+            .toList(),
         storeName: j['store_name'] as String?,
         brandId: j['brand_id'] as int?,
         brandName: j['brand_name'] as String?,

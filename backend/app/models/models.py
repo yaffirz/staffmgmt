@@ -232,6 +232,15 @@ class Employees(SQLModel, table=True):
     # Drives the blue "promotion — review" flag in the employee list and floats
     # the row to the top for IT viewers. Cleared when the row is marked reviewed.
     promotion_pending_review: bool = Field(default=False)
+    # Field keys (e.g. "payrate", "email") an Admin/IT flagged as needing review.
+    # Non-empty = the row is pending review; those cells are highlighted in the
+    # list. Set/cleared by the review-flag endpoint; cleared when marked reviewed.
+    review_fields: list = Field(
+        default_factory=list,
+        sa_column=Column(
+            JSONB, nullable=False, server_default=text("'[]'::jsonb")
+        ),
+    )
 
 
 class EmployeeAdditionalStores(SQLModel, table=True):
