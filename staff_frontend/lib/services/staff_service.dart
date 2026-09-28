@@ -256,6 +256,19 @@ class StaffService {
     return UserAccount.fromJson(data);
   }
 
+  // ---- Per-user preferences ----------------------------------------------
+
+  /// The current user's saved value for [key] (null if unset).
+  Future<Map<String, dynamic>?> getPreference(String key) async {
+    final data = await _api.get('/api/v1/me/preferences/$key')
+        as Map<String, dynamic>;
+    return data['value'] as Map<String, dynamic>?;
+  }
+
+  Future<void> setPreference(String key, Map<String, dynamic> value) async {
+    await _api.put('/api/v1/me/preferences/$key', {'value': value});
+  }
+
   // ---- Password reset (unauthenticated) ----------------------------------
 
   /// Request a reset link. Always succeeds (neutral) — never reveals whether the

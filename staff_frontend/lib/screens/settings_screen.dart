@@ -26,6 +26,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   static const _appDownloadKey = 'app_download_enabled';
   static const _emailUnavailKey = 'email_unavailable_enabled';
   static const _payrateReviewKey = 'payrate_required_for_review';
+  static const _columnCustomizersKey = 'column_customizers';
 
   // Marketing content types (value -> label).
   static const _mktTypes = <String, String>{
@@ -55,6 +56,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   DateTime? _maintenanceUntil; // saved absolute end time
   String _selectedDuration = 'No end time';
   final TextEditingController _msgController = TextEditingController();
+  final TextEditingController _colCustCtrl = TextEditingController();
+  bool _savingColCust = false;
   bool _savingWindow = false;
 
   // Marketing block state.
@@ -85,6 +88,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   void dispose() {
     _msgController.dispose();
+    _colCustCtrl.dispose();
     _mktTitleController.dispose();
     _mktContentController.dispose();
     super.dispose();
@@ -111,6 +115,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         svc.getSetting(_appDownloadKey),
         svc.getSetting(_emailUnavailKey),
         svc.getSetting(_payrateReviewKey),
+        svc.getSetting(_columnCustomizersKey),
       ]);
       if (!mounted) return;
       final untilRaw = results[4];
@@ -130,6 +135,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _appDownloadOn = results[10].toLowerCase() == 'true';
         _emailUnavailOn = results[11].toLowerCase() == 'true';
         _payrateReviewOn = results[12].toLowerCase() != 'false';
+        _colCustCtrl.text = results[13];
         _loading = false;
       });
     } catch (_) {
@@ -239,6 +245,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ? 'New hires can be added without an email (flagged for HR).'
             : 'An email is now always required for new hires.',
       );
+
+  Future<void> _saveColumnCustomizers() async {
+    setState(() => _savingColCust = true);
+    try {
+      await context
+          .read<StaffService>()
+          .updateSetting(_columnCustomizersKey, _colCustCtrl.text.trim());
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Column-customizer list saved.')),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not save. Please try again.')),
+      );
+    } finally {
+      if (mounted) setState(() => _savingColCust = false);
+    }
+  }
 
   Future<void> _setPayrateReview(bool value) => _setBoolSetting(
         _payrateReviewKey,
@@ -395,6 +421,46 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     'it from being marked reviewed until a valid rate is set.'),
                 value: _payrateReviewOn,
                 onChanged: _saving ? null : _setPayrateReview,
+              )),
+              const SizedBox(height: 12),
+              _card(Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Who can customize employee columns',
+                      style: TextStyle(fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 4),
+                  const Text(
+                      'Admins can always show/hide their own employee-list '
+                      'columns. Add other usernames here (comma-separated) to '
+                      'grant them the same.',
+                      style: TextStyle(fontSize: 12.5)),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: _colCustCtrl,
+                    decoration: const InputDecoration(
+                      labelText: 'Extra usernames',
+                      hintText: 'karisma, another_user',
+                      isDense: true,
+                    ),
+                    onSubmitted: (_) =>
+                        _savingColCust ? null : _saveColumnCustomizers(),
+                  ),
+                  const SizedBox(height: 10),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: FilledButton(
+                      onPressed:
+                          _savingColCust ? null : _saveColumnCustomizers,
+                      child: _savingColCust
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child:
+                                  CircularProgressIndicator(strokeWidth: 2))
+                          : const Text('Save'),
+                    ),
+                  ),
+                ],
               )),
               const SizedBox(height: 24),
               _sectionTitle('Android app'),

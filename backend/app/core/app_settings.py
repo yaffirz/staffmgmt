@@ -48,6 +48,9 @@ DEFAULTS: dict[str, str] = {
     # Require a real pay rate before a row can be marked reviewed: a pay rate of
     # 0.00 flags the row amber and blocks review until it's fixed.
     "payrate_required_for_review": "true",
+    # Extra usernames (comma-separated, case-insensitive) allowed to customize
+    # their employee-list columns, in addition to Admin / Super Admin roles.
+    "column_customizers": "karisma",
     # --- Outgoing email (SMTP) -------------------------------------------
     # Master switch: when off, send_email() is a no-op that only logs (the
     # historical stub behaviour). Turn on once the server settings below are

@@ -21,6 +21,7 @@ from app.api.routes import (
     marketing,
     notes,
     notifications,
+    preferences,
     registration,
     settings as settings_routes,
     status as status_routes,
@@ -81,6 +82,7 @@ app.include_router(registration.router)
 app.include_router(backups.router)
 app.include_router(app_dist.router)
 app.include_router(email_admin.router)
+app.include_router(preferences.router)
 
 
 @app.get("/health", tags=["meta"])

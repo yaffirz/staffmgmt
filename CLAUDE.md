@@ -204,6 +204,13 @@ Owner: Arif Asad Ali.
   `employees.updated_at=now`); the list floats recently-changed, still-unreviewed
   rows to the top (most-recent first). New hires (no `updated_at`) stay put; the
   old IT-only promotion float was replaced by this general one (changelog 0073).
+- **Per-user column customization (done):** permitted users get a **Columns**
+  button to show/hide employee-list columns; the layout saves per user in a new
+  `user_preferences` table (`GET/PUT /api/v1/me/preferences/{key}`). Allowed =
+  Admin/Super Admin OR username in the `column_customizers` setting (default
+  `karisma`, editable in Settings). `/auth/me` returns `can_customize_columns`.
+  Reviewed/Name/Actions always shown; the toggleable set is `kToggleableColumns`
+  (changelog 0074).
 - **Global top bar (done):** the notification bell + theme toggle + log-out appear
   on **every** signed-in page (appended by `AppScaffold`), not just the dashboard
   (changelog 0054).

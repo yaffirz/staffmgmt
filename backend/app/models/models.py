@@ -371,6 +371,27 @@ class AppSettings(SQLModel, table=True):
     value: str
 
 
+class UserPreferences(SQLModel, table=True):
+    """Per-user UI preferences (e.g. which employee-list columns to show). One
+    row per (user, key); the value is arbitrary JSON. Created by create_all."""
+
+    __tablename__ = "user_preferences"
+    __table_args__ = (
+        UniqueConstraint("user_id", "pref_key", name="uq_userpref_user_key"),
+    )
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: int = Field(foreign_key="users.user_id", index=True)
+    pref_key: str = Field(index=True)
+    value: dict = Field(
+        default_factory=dict,
+        sa_column=Column(
+            JSONB, nullable=False, server_default=text("'{}'::jsonb")
+        ),
+    )
+    updated_at: datetime = Field(default_factory=utcnow)
+
+
 class RegistrationRequests(SQLModel, table=True):
     """Self-service sign-ups awaiting email confirmation + admin approval. Kept
     separate from `users` so existing login/accounts are untouched; an approved

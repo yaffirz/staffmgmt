@@ -37,6 +37,7 @@ class CurrentUser(BaseModel):
     roles: list[str] = []  # effective roles (primary + additional)
     tenant_id: int
     must_change_password: bool = False
+    can_customize_columns: bool = False  # may adjust their employee-list columns
 
     def has_role(self, *any_of: str) -> bool:
         """True if the user holds any of the given roles (effective set)."""

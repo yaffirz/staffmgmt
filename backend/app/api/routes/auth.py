@@ -116,6 +116,18 @@ def me(
     DB so the flag reflects any change made since the token was issued)."""
     user = session.get(Users, current.user_id)
     current.must_change_password = bool(user and user.must_change_password)
+    # May this user adjust their employee-list columns? Admins always may; extra
+    # usernames come from the (admin-editable) column_customizers setting.
+    extra = {
+        u.strip().lower()
+        for u in (
+            get_setting(session, current.tenant_id, "column_customizers") or ""
+        ).split(",")
+        if u.strip()
+    }
+    current.can_customize_columns = current.has_role(
+        "Super Admin", "Admin"
+    ) or current.username.lower() in extra
     return current
 
 
