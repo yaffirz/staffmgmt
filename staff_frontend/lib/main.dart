@@ -13,6 +13,7 @@ import 'state/maintenance_provider.dart';
 import 'state/marketing_provider.dart';
 import 'state/server_provider.dart';
 import 'state/theme_provider.dart';
+import 'state/view_prefs_provider.dart';
 import 'theme/app_theme.dart';
 
 void main() {
@@ -78,6 +79,7 @@ class StaffPortalApp extends StatelessWidget {
         // not here — it needs the server URL to be known first.
         ChangeNotifierProvider(create: (_) => AuthProvider(authService)),
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
+        ChangeNotifierProvider(create: (_) => ViewPrefsProvider()),
         ChangeNotifierProvider(
             create: (_) => MaintenanceProvider(staffService)),
         ChangeNotifierProvider(

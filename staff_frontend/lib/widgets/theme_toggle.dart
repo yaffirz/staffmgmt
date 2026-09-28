@@ -11,7 +11,10 @@ class ThemeToggle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = context.watch<ThemeProvider>().isDark;
+    // Watch the provider so the switch rebuilds on a mode change, but read the
+    // effective brightness so it's correct even in "system" mode.
+    context.watch<ThemeProvider>();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Tooltip(
       message: isDark ? 'Switch to light mode' : 'Switch to dark mode',

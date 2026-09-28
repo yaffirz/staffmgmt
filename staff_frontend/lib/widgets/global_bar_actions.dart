@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../screens/preferences_screen.dart';
 import '../state/auth_provider.dart';
 import 'notification_bell.dart';
 import 'theme_toggle.dart';
@@ -20,6 +21,13 @@ class GlobalBarActions extends StatelessWidget {
         const SizedBox(width: 4),
         const ThemeToggle(),
         const SizedBox(width: 4),
+        IconButton(
+          tooltip: 'Preferences',
+          icon: const Icon(Icons.tune),
+          onPressed: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const PreferencesScreen()),
+          ),
+        ),
         IconButton(
           tooltip: 'Log out',
           icon: const Icon(Icons.logout),

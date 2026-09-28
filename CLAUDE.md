@@ -211,9 +211,15 @@ Owner: Arif Asad Ali.
   `karisma`, editable in Settings). `/auth/me` returns `can_customize_columns`.
   Reviewed/Name/Actions always shown; the toggleable set is `kToggleableColumns`
   (changelog 0074).
-- **Global top bar (done):** the notification bell + theme toggle + log-out appear
-  on **every** signed-in page (appended by `AppScaffold`), not just the dashboard
-  (changelog 0054).
+- **Global top bar (done):** the notification bell + theme toggle + **Preferences**
+  (tune) + log-out appear on **every** signed-in page (appended by `AppScaffold`),
+  not just the dashboard (changelog 0054, 0075).
+- **Per-user Preferences + card view (done):** a universal **Preferences** screen
+  (any user, `preferences_screen.dart`) sets **Appearance** (light/dark/**system**,
+  `ThemeProvider.setMode`) and **Employee list layout** (Table / **Cards**,
+  `ViewPrefsProvider`), saved per device. In Cards mode the employee list renders
+  `_EmployeeCard`s (status chip, role line, key facts) with the same state tints,
+  flag highlights and actions as the table (changelog 0075).
 - **Force password change (done):** admin checkbox **"Require password change at
   next login"** (`users.must_change_password`); a forced-change screen gates the
   app until the user sets a new password; self-service `POST
