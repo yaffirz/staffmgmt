@@ -199,6 +199,11 @@ Owner: Arif Asad Ali.
   A flag **auto-clears** when its cell value changes on edit — `update_employee`
   (full form + quick edit) and `set_mag` drop just the changed field's flag
   (changelog 0072).
+- **Update → un-review + float to top (done):** an edit, promote/demote, or
+  additional-store add calls `touch_for_review` (sets `reviewed=false` +
+  `employees.updated_at=now`); the list floats recently-changed, still-unreviewed
+  rows to the top (most-recent first). New hires (no `updated_at`) stay put; the
+  old IT-only promotion float was replaced by this general one (changelog 0073).
 - **Global top bar (done):** the notification bell + theme toggle + log-out appear
   on **every** signed-in page (appended by `AppScaffold`), not just the dashboard
   (changelog 0054).

@@ -18,6 +18,7 @@ from app.models.models import (
     StaffStatusLog,
     Stores,
     Users,
+    touch_for_review,
 )
 from app.schemas.auth import CurrentUser
 from app.schemas.status import StatusChangeRequest, StatusLogItem
@@ -146,11 +147,10 @@ def change_status(
             }
         )
         emp.position_id = pos.position_id
-        # A promotion re-opens the row for IT: mark it unreviewed and flag it so
-        # the employee list tints it blue and floats it to the top for IT.
+        # A promote/demote re-opens the row: mark it unreviewed and bump it to the
+        # top of the list for re-review. A promotion also gets the blue flag.
+        touch_for_review(emp)
         if action == "PROMOTION":
-            emp.reviewed = False
-            emp.reviewed_at = None
             emp.promotion_pending_review = True
     elif action == "TERMINATION":
         if emp.employment_status == "terminated":

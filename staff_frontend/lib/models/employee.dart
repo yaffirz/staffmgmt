@@ -26,6 +26,7 @@ class Employee {
   final int? createdBy;
   final String? createdByName;
   final DateTime? reviewedAt;
+  final DateTime? updatedAt; // last data-change; floats recent edits to the top
 
   const Employee({
     required this.employeeId,
@@ -55,6 +56,7 @@ class Employee {
     this.createdBy,
     this.createdByName,
     this.reviewedAt,
+    this.updatedAt,
   });
 
   factory Employee.fromJson(Map<String, dynamic> j) => Employee(
@@ -94,6 +96,7 @@ class Employee {
         createdBy: j['created_by'] as int?,
         createdByName: j['created_by_name'] as String?,
         reviewedAt: _parseDate(j['reviewed_at']),
+        updatedAt: _parseDate(j['updated_at']),
       );
 
   static DateTime? _parseDate(dynamic v) {

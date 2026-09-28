@@ -20,6 +20,7 @@ from app.models.models import (
     Positions,
     StaffStatusLog,
     Stores,
+    touch_for_review,
 )
 from app.schemas.auth import CurrentUser
 from app.schemas.cluster import (
@@ -466,6 +467,9 @@ def assign_store(
     session.add(
         EmployeeAdditionalStores(employee_id=employee_id, store_id=store_id)
     )
+    # Adding a store re-opens the row for review and floats it to the top.
+    touch_for_review(emp)
+    session.add(emp)
     session.commit()
 
     session.add(

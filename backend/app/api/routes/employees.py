@@ -25,6 +25,7 @@ from app.models.models import (
     StoreBrands,
     Stores,
     Users,
+    touch_for_review,
     utcnow,
 )
 from app.schemas.auth import CurrentUser
@@ -223,6 +224,7 @@ def _enrich(emp: Employees, session: Session) -> EmployeeRead:
         created_at=emp.created_at,
         created_by=emp.created_by,
         reviewed_at=emp.reviewed_at,
+        updated_at=emp.updated_at,
         store_name=store.store_name if store else None,
         brand_name=brand.brand_name if brand else None,
         position_title=position.position_title if position else None,
@@ -439,6 +441,7 @@ def list_employees(
                 created_at=emp.created_at,
                 created_by=emp.created_by,
                 reviewed_at=emp.reviewed_at,
+                updated_at=emp.updated_at,
                 store_name=store.store_name if store else None,
                 brand_name=brand.brand_name if brand else None,
                 position_title=position.position_title if position else None,
@@ -796,6 +799,8 @@ def update_employee(
     emp.primary_store_id = payload.primary_store_id
     emp.position_id = payload.position_id
     emp.brand_id = resolved_brand_id
+    # An edit sends the row back into review and floats it to the top.
+    touch_for_review(emp)
     session.add(emp)
     session.commit()
 

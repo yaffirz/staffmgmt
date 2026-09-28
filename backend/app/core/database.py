@@ -57,6 +57,8 @@ _MIGRATIONS = [
     # Admin/IT "flag for review": which field keys need a second look.
     "ALTER TABLE employees ADD COLUMN IF NOT EXISTS "
     "review_fields JSONB NOT NULL DEFAULT '[]'::jsonb",
+    # Last data-change time; drives "recently changed → top of the list".
+    "ALTER TABLE employees ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP",
 ]
 
 

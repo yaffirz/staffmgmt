@@ -241,6 +241,18 @@ class Employees(SQLModel, table=True):
             JSONB, nullable=False, server_default=text("'[]'::jsonb")
         ),
     )
+    # Bumped whenever the row's data changes (edit / promote-demote / store add).
+    # Drives "recently changed, unreviewed → top of the list". NULL = never
+    # updated since creation.
+    updated_at: Optional[datetime] = Field(default=None)
+
+
+def touch_for_review(emp: "Employees") -> None:
+    """After a data change, send the row back into review: mark it unreviewed and
+    stamp updated_at so the list floats it to the top for re-review."""
+    emp.reviewed = False
+    emp.reviewed_at = None
+    emp.updated_at = utcnow()
 
 
 class EmployeeAdditionalStores(SQLModel, table=True):
