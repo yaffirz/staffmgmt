@@ -1,8 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlmodel import Session, select
 
 from app.api.deps import require_roles
+from app.api.routes.auth import prepare_reset_email
 from app.core.database import get_session
+from app.core.email import _deliver, load_email_config
 from app.core.security import hash_password
 from app.models.models import (
     ALLOWED_ROLES as MODEL_ALLOWED_ROLES,
@@ -459,6 +461,58 @@ def update_user(
         session.commit()
 
     return _read(session, user)
+
+
+@router.post("/{user_id}/send-password-reset")
+def send_password_reset(
+    user_id: int,
+    request: Request,
+    current: CurrentUser = Depends(require_roles(*MANAGE_ROLES)),
+    session: Session = Depends(get_session),
+):
+    """Admin-triggered password reset: email a fresh, single-use reset link to
+    the user. Unlike the public forgot-password flow (which stays neutral), this
+    returns real errors so the admin knows whether it actually went out."""
+    user = session.get(Users, user_id)
+    if user is None or user.tenant_id != current.tenant_id:
+        raise HTTPException(status_code=404, detail="User not found.")
+    if not user.email:
+        raise HTTPException(
+            status_code=400, detail="This user has no email address on file."
+        )
+    if not user.email_opt_in:
+        raise HTTPException(
+            status_code=400,
+            detail="This user has opted out of platform email — turn on "
+            "'Receives platform email' first.",
+        )
+    if user.suspended:
+        raise HTTPException(
+            status_code=400,
+            detail="This account is suspended. Reactivate it before sending a "
+            "reset link.",
+        )
+
+    cfg = load_email_config(session, current.tenant_id)
+    if not cfg.enabled:
+        raise HTTPException(
+            status_code=400,
+            detail="Email sending is turned off. Enable it in Admin → Email.",
+        )
+    if not cfg.configured:
+        raise HTTPException(
+            status_code=400,
+            detail="The email server is not configured (Admin → Email).",
+        )
+
+    to, subject, text, html = prepare_reset_email(session, user, request)
+    try:
+        _deliver(cfg, to, subject, text, html=html)
+    except Exception as exc:  # surface the real SMTP error to the admin
+        raise HTTPException(
+            status_code=502, detail=f"Could not send the email: {exc}"
+        ) from exc
+    return {"detail": f"A password reset link was emailed to {to}."}
 
 
 @router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)

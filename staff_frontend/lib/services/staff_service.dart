@@ -300,6 +300,16 @@ class StaffService {
     await _api.delete('/api/v1/users/$userId');
   }
 
+  /// Admin action: email a single-use password-reset link to this user. Throws
+  /// ApiException with a real reason (400 no email / opted out / suspended /
+  /// email disabled, 502 send failed). Returns the success message.
+  Future<String> sendPasswordReset(int userId) async {
+    final data = await _api.post('/api/v1/users/$userId/send-password-reset', {});
+    return (data is Map && data['detail'] is String)
+        ? data['detail'] as String
+        : 'Password reset link sent.';
+  }
+
   /// Creates a new hire. Throws ApiException (e.g. 409 on duplicate payroll_id).
   Future<void> createEmployee(Map<String, dynamic> payload) async {
     await _api.post('/api/v1/employees', payload);

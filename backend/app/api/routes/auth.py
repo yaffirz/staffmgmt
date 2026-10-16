@@ -189,6 +189,20 @@ def forgot_password(
     ):
         return _FORGOT_NEUTRAL
 
+    to, subject, text, html = prepare_reset_email(session, user, request)
+    send_email(to, subject, text, html=html)
+    return _FORGOT_NEUTRAL
+
+
+def prepare_reset_email(
+    session: Session, user: Users, request: Request
+) -> tuple[str, str, str, str | None]:
+    """Issue a fresh single-use reset token for ``user`` (invalidating any
+    outstanding ones) and render the reset email from the admin-editable
+    template. Commits the token and returns ``(to, subject, text, html)`` ready
+    to hand to ``send_email`` (public flow) or ``_deliver`` (admin flow that
+    wants the real send result). Callers must confirm the account is eligible
+    (has an email, opted in, not suspended) before calling."""
     # Invalidate any outstanding reset tokens for this user, then issue a fresh one.
     for row in session.exec(
         select(PasswordResetTokens).where(
@@ -236,8 +250,7 @@ def forgot_password(
     if "<reset_link>" not in body_template:
         body_template = f"{body_template.rstrip()}\n\n<reset_link>".strip()
     text, html = compose_message(session, tid, body_template, ctx)
-    send_email(user.email, subject, text, html=html)
-    return _FORGOT_NEUTRAL
+    return user.email or "", subject, text, html
 
 
 @router.get("/reset-password/validate")

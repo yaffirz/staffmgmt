@@ -138,6 +138,8 @@ class _UsersScreenState extends State<UsersScreen> {
     bool mustChange = editing?.mustChangePassword ?? false;
     bool suspended = editing?.suspended ?? false;
     bool emailOptIn = editing?.emailOptIn ?? true;
+    bool sendingReset = false; // admin "email reset link" in-flight
+    String? resetOk; // success note under the reset button
     bool isStoreRole(String r) => r == 'Store' || r == 'Foodmall';
 
     final saved = await showDialog<bool>(
@@ -297,6 +299,56 @@ class _UsersScreenState extends State<UsersScreen> {
                         style: TextStyle(fontSize: 12),
                       ),
                     ),
+                    if (isEdit) ...[
+                      const SizedBox(height: 4),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: OutlinedButton.icon(
+                          onPressed: sendingReset
+                              ? null
+                              : () async {
+                                  setLocal(() {
+                                    sendingReset = true;
+                                    errorText = null;
+                                    resetOk = null;
+                                  });
+                                  try {
+                                    final msg = await ctx
+                                        .read<StaffService>()
+                                        .sendPasswordReset(editing.userId);
+                                    setLocal(() => resetOk = msg);
+                                  } on ApiException catch (e) {
+                                    setLocal(() => errorText = e.message);
+                                  } catch (_) {
+                                    setLocal(() => errorText =
+                                        'Could not send the reset email.');
+                                  } finally {
+                                    setLocal(() => sendingReset = false);
+                                  }
+                                },
+                          icon: sendingReset
+                              ? const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                      strokeWidth: 2),
+                                )
+                              : const Icon(Icons.mail_outline, size: 18),
+                          label: Text(sendingReset
+                              ? 'Sending…'
+                              : 'Email password reset link'),
+                        ),
+                      ),
+                      if (resetOk != null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 6),
+                          child: Text(
+                            resetOk!,
+                            style: const TextStyle(
+                                fontSize: 12.5, color: Color(0xFF2E7D43)),
+                          ),
+                        ),
+                    ],
                     if (isEdit && !isSelf)
                       SwitchListTile(
                         value: suspended,

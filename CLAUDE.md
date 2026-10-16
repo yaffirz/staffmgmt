@@ -235,6 +235,20 @@ Owner: Arif Asad Ali.
 - **Login by username OR email (done):** the identifier is trimmed and matched
   **case-insensitively** against both `username` and `email`; the field is
   relabeled "Username or email" (changelog 0060).
+- **Admin-sent password reset (done):** the user **edit** dialog in Users & Roles
+  has an **"Email password reset link"** button (Admin / Super Admin) that emails
+  a fresh single-use 60-min link to the user — the admin-triggered counterpart to
+  the login-page **Forgot password?** flow. `POST
+  /api/v1/users/{id}/send-password-reset` reuses `prepare_reset_email` (extracted
+  from `forgot-password`) but returns **real errors** (no email / opted out /
+  suspended / email disabled / SMTP failure) instead of the public flow's neutral
+  response. No new toggle — it honours the global email on/off (0066) and per-user
+  opt-in (0067) (changelog 0077).
+- **"Unreviewed" employee filter + default top (done):** the review-status filter
+  value `reviewed==false` is labelled **"Unreviewed"** (quick chip, dropdown,
+  active chip), and the employee list's default sort floats **all** unreviewed
+  rows ahead of reviewed ones (recently-changed first) so reviewers see everything
+  outstanding on page 1 — table and card views (changelog 0076).
 
 ## Known bugs fixed (Aug 2026)
 - **Recurring "replace child rows" 500s.** A helper that *deletes all child rows
