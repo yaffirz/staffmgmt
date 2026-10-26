@@ -1,4 +1,7 @@
-# Changelog 0077 — Fixit integration: CORS + FIXIT_PINNED notification
+# Changelog 0079 — Fixit integration: CORS + FIXIT_PINNED notification
+
+> Renumbered from 0077 → 0079 (changelog 0078 had already taken the next slot and
+> an admin-send-password-reset entry also used 0077); content unchanged.
 
 - **Timestamp:** 2026-10-16 (AST, UTC-4)
 - **Requested by:** Fixit build (API.md §7)
