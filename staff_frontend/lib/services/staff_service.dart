@@ -3,6 +3,7 @@ import '../models/app_info.dart';
 import '../models/audit_log.dart';
 import '../models/backup_item.dart';
 import '../models/bulk_result.dart';
+import '../models/clock.dart';
 import '../models/cluster.dart';
 import '../models/directory.dart';
 import '../models/employee.dart';
@@ -384,6 +385,105 @@ class StaffService {
       {'override': override},
     ) as Map<String, dynamic>;
     return Employee.fromJson(data);
+  }
+
+  // ---- Clock-in / fingerprints ----
+
+  /// Public kiosk config (no auth).
+  Future<ClockConfig> clockConfig() async {
+    final data =
+        await _api.get('/api/v1/clock/config', auth: false) as Map<String, dynamic>;
+    return ClockConfig.fromJson(data);
+  }
+
+  /// Public, dev-only: non-Oracle roster for the simulate-scan picker (empty
+  /// unless dev mode is on). Returns (id, name, payroll, brand, store) tuples.
+  Future<List<Map<String, dynamic>>> clockRoster() async {
+    final data = await _api.get('/api/v1/clock/roster', auth: false) as List;
+    return data.cast<Map<String, dynamic>>();
+  }
+
+  /// Public: resolve a scan to an employee + their clock status (no auth).
+  Future<ClockStatus> clockIdentify({String? template, int? employeeId}) async {
+    final data = await _api.post(
+      '/api/v1/clock/identify',
+      {'template': template, 'employee_id': employeeId},
+      auth: false,
+    ) as Map<String, dynamic>;
+    return ClockStatus.fromJson(data);
+  }
+
+  /// Public: record the next in/out punch for a scanned employee (no auth).
+  Future<PunchResult> clockPunch(
+      {String? template, int? employeeId, String? note}) async {
+    final data = await _api.post(
+      '/api/v1/clock/punch',
+      {'template': template, 'employee_id': employeeId, 'note': note},
+      auth: false,
+    ) as Map<String, dynamic>;
+    return PunchResult.fromJson(data);
+  }
+
+  /// Non-Oracle employees this manager may clock in/out, with current status.
+  Future<List<ClockStatus>> clockMyRoster() async {
+    final data = await _api.get('/api/v1/clock/my-roster') as List;
+    return data
+        .map((e) => ClockStatus.fromJson(e as Map<String, dynamic>))
+        .toList(growable: false);
+  }
+
+  /// A manager clocks an employee in/out on their behalf (auth).
+  Future<PunchResult> clockManagerPunch(int employeeId,
+      {String? eventType, String? note}) async {
+    final data = await _api.post('/api/v1/clock/manager-punch', {
+      'employee_id': employeeId,
+      'event_type': eventType,
+      'note': note,
+    }) as Map<String, dynamic>;
+    return PunchResult.fromJson(data);
+  }
+
+  /// Recent clock events (newest first), optionally for one employee.
+  Future<List<ClockEvent>> clockEvents({int? employeeId, int limit = 200}) async {
+    final q = StringBuffer('/api/v1/clock/events?limit=$limit');
+    if (employeeId != null) q.write('&employee_id=$employeeId');
+    final data = await _api.get(q.toString()) as List;
+    return data
+        .map((e) => ClockEvent.fromJson(e as Map<String, dynamic>))
+        .toList(growable: false);
+  }
+
+  Future<List<Fingerprint>> fingerprints(int employeeId) async {
+    final data =
+        await _api.get('/api/v1/fingerprints/employee/$employeeId') as List;
+    return data
+        .map((e) => Fingerprint.fromJson(e as Map<String, dynamic>))
+        .toList(growable: false);
+  }
+
+  /// Register a finger. `template` optional (dev generates a stand-in).
+  Future<Fingerprint> enrollFingerprint(int employeeId, String fingerLabel,
+      {String? template}) async {
+    final data = await _api.post('/api/v1/fingerprints', {
+      'employee_id': employeeId,
+      'finger_label': fingerLabel,
+      'template': template,
+    }) as Map<String, dynamic>;
+    return Fingerprint.fromJson(data);
+  }
+
+  /// Re-scan / re-label a finger.
+  Future<Fingerprint> modifyFingerprint(int fingerprintId,
+      {String? fingerLabel, String? template}) async {
+    final data = await _api.patch('/api/v1/fingerprints/$fingerprintId', {
+      'finger_label': fingerLabel,
+      'template': template,
+    }) as Map<String, dynamic>;
+    return Fingerprint.fromJson(data);
+  }
+
+  Future<void> deleteFingerprint(int fingerprintId) async {
+    await _api.delete('/api/v1/fingerprints/$fingerprintId');
   }
 
   /// Suggested next MAG card number (auto-increments from 70000000).

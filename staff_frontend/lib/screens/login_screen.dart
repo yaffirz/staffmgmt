@@ -9,6 +9,7 @@ import '../theme/app_theme.dart';
 import '../widgets/app_logo.dart';
 import '../widgets/app_scaffold.dart';
 import '../widgets/marketing_block.dart';
+import 'clock_kiosk_screen.dart';
 import 'forgot_password_screen.dart';
 import 'register_screen.dart';
 
@@ -203,6 +204,16 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ),
           ],
+          const SizedBox(height: 2),
+          Center(
+            child: TextButton.icon(
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const ClockKioskScreen()),
+              ),
+              icon: const Icon(Icons.fingerprint, size: 18),
+              label: const Text('Clock-in station'),
+            ),
+          ),
         ],
       ),
     );

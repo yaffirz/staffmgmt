@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../models/clock.dart';
 import '../models/employee.dart';
 import '../models/non_oracle_brand.dart';
 import '../services/api_client.dart';
@@ -107,6 +108,13 @@ class _NonOracleScreenState extends State<NonOracleScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Could not update the employee.')));
     }
+  }
+
+  Future<void> _manageFingerprints(Employee e) async {
+    await showDialog<void>(
+      context: context,
+      builder: (_) => _FingerprintsDialog(employee: e),
+    );
   }
 
   Future<void> _openAddEmployees() async {
@@ -233,6 +241,7 @@ class _NonOracleScreenState extends State<NonOracleScreen> {
                     filtered,
                     cs,
                     onSetOverride: _setOverride,
+                    onManageFingerprints: _manageFingerprints,
                   ),
                 ),
               ),
@@ -281,8 +290,10 @@ class _NonOracleSource extends DataTableSource {
   final List<Employee> rows;
   final ColorScheme cs;
   final Future<void> Function(Employee, bool?) onSetOverride;
+  final Future<void> Function(Employee) onManageFingerprints;
 
-  _NonOracleSource(this.rows, this.cs, {required this.onSetOverride});
+  _NonOracleSource(this.rows, this.cs,
+      {required this.onSetOverride, required this.onManageFingerprints});
 
   @override
   DataRow? getRow(int index) {
@@ -304,6 +315,9 @@ class _NonOracleSource extends DataTableSource {
         icon: const Icon(Icons.more_vert, size: 20),
         onSelected: (v) {
           switch (v) {
+            case 'fingerprints':
+              onManageFingerprints(e);
+              break;
             case 'remove':
               onSetOverride(e, false); // force out of the list
               break;
@@ -313,6 +327,8 @@ class _NonOracleSource extends DataTableSource {
           }
         },
         itemBuilder: (_) => [
+          const PopupMenuItem(
+              value: 'fingerprints', child: Text('Manage fingerprints')),
           const PopupMenuItem(
               value: 'remove', child: Text('Remove from list')),
           if (e.nonOracleOverride != null)
@@ -475,6 +491,200 @@ class _AddEmployeesDialogState extends State<_AddEmployeesDialog> {
         TextButton(
           onPressed: () => Navigator.pop(context, _justAdded.isNotEmpty),
           child: const Text('Done'),
+        ),
+      ],
+    );
+  }
+}
+
+/// Register / modify / remove an employee's fingerprints. Capture is pluggable:
+/// with no reader wired, enrolling stores a dev stand-in template (the real
+/// DigitalPersona WebSDK supplies a real template later).
+class _FingerprintsDialog extends StatefulWidget {
+  final Employee employee;
+  const _FingerprintsDialog({required this.employee});
+
+  @override
+  State<_FingerprintsDialog> createState() => _FingerprintsDialogState();
+}
+
+class _FingerprintsDialogState extends State<_FingerprintsDialog> {
+  List<Fingerprint> _prints = [];
+  bool _loading = true;
+  String? _error;
+  bool _busy = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final prints =
+          await context.read<StaffService>().fingerprints(widget.employee.employeeId);
+      if (!mounted) return;
+      setState(() {
+        _prints = prints;
+        _loading = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _error = 'Could not load fingerprints.';
+        _loading = false;
+      });
+    }
+  }
+
+  List<String> get _availableFingers {
+    final used = _prints.map((p) => p.fingerLabel).toSet();
+    return kFingerLabels.where((f) => !used.contains(f)).toList();
+  }
+
+  Future<void> _enroll() async {
+    final available = _availableFingers;
+    if (available.isEmpty) return;
+    final label = await _pickFinger(available);
+    if (label == null || !mounted) return;
+    setState(() => _busy = true);
+    try {
+      await context
+          .read<StaffService>()
+          .enrollFingerprint(widget.employee.employeeId, label);
+      await _load();
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(e.message)));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _rescan(Fingerprint f) async {
+    setState(() => _busy = true);
+    try {
+      // Re-enrol: a fresh stand-in template (the reader would supply a real one).
+      await context
+          .read<StaffService>()
+          .modifyFingerprint(f.fingerprintId, template: '');
+      await _load();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text('${fingerLabelPretty(f.fingerLabel)} re-scanned.')));
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _remove(Fingerprint f) async {
+    setState(() => _busy = true);
+    try {
+      await context.read<StaffService>().deleteFingerprint(f.fingerprintId);
+      await _load();
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<String?> _pickFinger(List<String> fingers) {
+    return showDialog<String>(
+      context: context,
+      builder: (ctx) => SimpleDialog(
+        title: const Text('Which finger?'),
+        children: [
+          for (final f in fingers)
+            SimpleDialogOption(
+              onPressed: () => Navigator.pop(ctx, f),
+              child: Text(fingerLabelPretty(f)),
+            ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return AlertDialog(
+      title: Text('Fingerprints — ${widget.employee.employeeName}'),
+      content: SizedBox(
+        width: 420,
+        child: _loading
+            ? const SizedBox(
+                height: 120, child: Center(child: CircularProgressIndicator()))
+            : _error != null
+                ? SizedBox(height: 80, child: Center(child: Text(_error!)))
+                : Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      if (_prints.isEmpty)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          child: Text('No fingerprints enrolled yet.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(color: cs.onSurfaceVariant)),
+                        )
+                      else
+                        ..._prints.map((f) => ListTile(
+                              dense: true,
+                              contentPadding: EdgeInsets.zero,
+                              leading: const Icon(Icons.fingerprint),
+                              title: Text(fingerLabelPretty(f.fingerLabel)),
+                              subtitle: Text(f.enrolled
+                                  ? 'Enrolled'
+                                  : 'Not enrolled'),
+                              trailing: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  TextButton(
+                                    onPressed: _busy ? null : () => _rescan(f),
+                                    child: const Text('Re-scan'),
+                                  ),
+                                  IconButton(
+                                    tooltip: 'Remove',
+                                    icon: const Icon(Icons.delete_outline,
+                                        size: 20),
+                                    onPressed: _busy ? null : () => _remove(f),
+                                  ),
+                                ],
+                              ),
+                            )),
+                      const SizedBox(height: 8),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: OutlinedButton.icon(
+                          onPressed: (_busy || _availableFingers.isEmpty)
+                              ? null
+                              : _enroll,
+                          icon: const Icon(Icons.add, size: 18),
+                          label: Text(_availableFingers.isEmpty
+                              ? 'All fingers enrolled'
+                              : 'Register a finger'),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        'No reader wired yet — enrolling stores a placeholder so '
+                        'the flow is testable. The real scanner drops in later.',
+                        style: TextStyle(
+                            fontSize: 11.5, color: cs.onSurfaceVariant),
+                      ),
+                    ],
+                  ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Close'),
         ),
       ],
     );

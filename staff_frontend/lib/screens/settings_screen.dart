@@ -27,6 +27,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   static const _emailUnavailKey = 'email_unavailable_enabled';
   static const _payrateReviewKey = 'payrate_required_for_review';
   static const _columnCustomizersKey = 'column_customizers';
+  static const _clockEnabledKey = 'clock_in_enabled';
+  static const _clockDevKey = 'clock_dev_mode';
 
   // Marketing content types (value -> label).
   static const _mktTypes = <String, String>{
@@ -79,6 +81,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
   // Require a pay rate (0.00 blocks review).
   bool _payrateReviewOn = true;
 
+  // Clock-in system.
+  bool _clockEnabledOn = true;
+  bool _clockDevOn = true;
+
   @override
   void initState() {
     super.initState();
@@ -116,6 +122,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
         svc.getSetting(_emailUnavailKey),
         svc.getSetting(_payrateReviewKey),
         svc.getSetting(_columnCustomizersKey),
+        svc.getSetting(_clockEnabledKey),
+        svc.getSetting(_clockDevKey),
       ]);
       if (!mounted) return;
       final untilRaw = results[4];
@@ -136,6 +144,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _emailUnavailOn = results[11].toLowerCase() == 'true';
         _payrateReviewOn = results[12].toLowerCase() != 'false';
         _colCustCtrl.text = results[13];
+        _clockEnabledOn = results[14].toLowerCase() != 'false';
+        _clockDevOn = results[15].toLowerCase() == 'true';
         _loading = false;
       });
     } catch (_) {
@@ -282,6 +292,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
         (on) => on
             ? 'The Android app download is shown to signed-in users.'
             : 'The Android app download is hidden.',
+      );
+
+  Future<void> _setClockEnabled(bool value) => _setBoolSetting(
+        _clockEnabledKey,
+        value,
+        (v) => _clockEnabledOn = v,
+        (on) => on
+            ? 'Clock-in is ON — the kiosk and manager clock-in work.'
+            : 'Clock-in is OFF — the kiosk shows "unavailable".',
+      );
+
+  Future<void> _setClockDev(bool value) => _setBoolSetting(
+        _clockDevKey,
+        value,
+        (v) => _clockDevOn = v,
+        (on) => on
+            ? 'Dev mode is ON — the kiosk can simulate scans (testing).'
+            : 'Dev mode is OFF — only a real fingerprint match can punch.',
       );
 
   Future<void> _setRegistration(bool value) => _setBoolSetting(
@@ -473,6 +501,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     './public first.'),
                 value: _appDownloadOn,
                 onChanged: _saving ? null : _setAppDownload,
+              )),
+              const SizedBox(height: 24),
+              _sectionTitle('Clock-in'),
+              const SizedBox(height: 12),
+              _card(SwitchListTile(
+                title: const Text('Clock-in system enabled'),
+                subtitle: const Text(
+                    'The kiosk clock-in page and manager-assisted clock-in. '
+                    'Fingerprints are scoped to Non-Oracle employees.'),
+                value: _clockEnabledOn,
+                onChanged: _saving ? null : _setClockEnabled,
+              )),
+              const SizedBox(height: 8),
+              _card(SwitchListTile(
+                title: const Text('Kiosk dev / simulate mode'),
+                subtitle: const Text(
+                    'Lets the no-login kiosk pick an employee to simulate a '
+                    'scan (for testing without the reader). Turn OFF in '
+                    'production so only a real fingerprint match can punch.'),
+                value: _clockDevOn,
+                onChanged: _saving ? null : _setClockDev,
               )),
             ],
           ),

@@ -12,9 +12,11 @@ from app.api.routes import (
     audit,
     auth,
     backups,
+    clock,
     cluster,
     email_admin,
     employees,
+    fingerprints,
     form_config,
     lookups,
     maintenance,
@@ -85,6 +87,8 @@ app.include_router(app_dist.router)
 app.include_router(email_admin.router)
 app.include_router(preferences.router)
 app.include_router(non_oracle.router)
+app.include_router(fingerprints.router)
+app.include_router(clock.router)
 
 
 @app.get("/health", tags=["meta"])

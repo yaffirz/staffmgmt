@@ -51,6 +51,15 @@ DEFAULTS: dict[str, str] = {
     # Extra usernames (comma-separated, case-insensitive) allowed to customize
     # their employee-list columns, in addition to Admin / Super Admin roles.
     "column_customizers": "karisma",
+    # --- Clock-in / fingerprint ------------------------------------------
+    # Master switch for the clock-in system (kiosk page + manager-assisted +
+    # fingerprint enrolment). When off, the kiosk page shows "unavailable".
+    "clock_in_enabled": "true",
+    # Dev/simulation mode for the kiosk: when on, the no-login kiosk lets an
+    # operator pick an employee to simulate a scan (for testing without the
+    # DigitalPersona reader). Turn OFF in production so only a real fingerprint
+    # match can punch.
+    "clock_dev_mode": "true",
     # --- Outgoing email (SMTP) -------------------------------------------
     # Master switch: when off, send_email() is a no-op that only logs (the
     # historical stub behaviour). Turn on once the server settings below are

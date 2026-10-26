@@ -13,6 +13,7 @@ import 'admin_hub_screen.dart';
 import 'all_notes_screen.dart';
 import 'brands_stores_hub_screen.dart';
 import 'cross_store_screen.dart';
+import 'clock_manager_screen.dart';
 import 'employees_hub_screen.dart';
 import 'my_cluster_screen.dart';
 import 'my_store_screen.dart';
@@ -98,6 +99,9 @@ void _open(BuildContext context, _Dest dest) {
     case _Dest.adminHub:
       screen = const AdminHubScreen();
       break;
+    case _Dest.clockManager:
+      screen = const ClockManagerScreen();
+      break;
     case _Dest.none:
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('The bell (top right) now handles this.')),
@@ -167,6 +171,18 @@ class _DashboardBody extends StatelessWidget {
       for (final m in _modulesFor(role)) {
         if (seen.add(m.title)) out.add(m);
       }
+    }
+    // The clock-in tile is shared by every role that may clock staff in/out.
+    const clockRoles = {
+      'Super Admin',
+      'Admin',
+      'IT',
+      'Area Manager',
+      'Store',
+      'Foodmall',
+    };
+    if (roles.any(clockRoles.contains) && seen.add(_clockModule.title)) {
+      out.add(_clockModule);
     }
     return out;
   }
@@ -258,7 +274,12 @@ enum _Dest {
   crossStore,
   myStore,
   adminHub,
+  clockManager,
 }
+
+// "Clock In Staff" tile, shared by the roles that may clock employees in/out.
+const _Module _clockModule = _Module('Clock In Staff', Icons.punch_clock_outlined,
+    'Clock staff in/out', dest: _Dest.clockManager);
 
 class _Module {
   final String title;

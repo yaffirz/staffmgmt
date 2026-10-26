@@ -475,3 +475,43 @@ class FormFieldConfig(SQLModel, table=True):
     # Locked = structural field; admins cannot toggle enabled/required.
     locked: bool = Field(default=False)
     sort_order: int = Field(default=0)
+
+
+class Fingerprints(SQLModel, table=True):
+    """An enrolled fingerprint for an employee (clock-in system). `template` is
+    an opaque enrolled template handled by the capture layer — in dev it's a
+    stand-in token; the DigitalPersona WebSDK drops in later without schema
+    changes. One row per employee+finger."""
+
+    __tablename__ = "fingerprints"
+    __table_args__ = (
+        UniqueConstraint(
+            "employee_id", "finger_label", name="uq_fingerprint_emp_finger"
+        ),
+    )
+
+    fingerprint_id: Optional[int] = Field(default=None, primary_key=True)
+    tenant_id: int = Field(default=1, index=True)
+    employee_id: int = Field(foreign_key="employees.employee_id", index=True)
+    finger_label: str  # e.g. "right-index"
+    template: str  # opaque enrolled template (dev: a random token)
+    created_at: datetime = Field(default_factory=utcnow)
+    updated_at: Optional[datetime] = Field(default=None)
+    created_by: Optional[int] = Field(default=None, foreign_key="users.user_id")
+
+
+class ClockEvents(SQLModel, table=True):
+    """A clock in/out punch. `source` records how it was recorded: a kiosk
+    fingerprint scan, a store manager on an employee's behalf, or a dev
+    simulation."""
+
+    __tablename__ = "clock_events"
+
+    clock_event_id: Optional[int] = Field(default=None, primary_key=True)
+    tenant_id: int = Field(default=1, index=True)
+    employee_id: int = Field(foreign_key="employees.employee_id", index=True)
+    event_type: str  # 'in' | 'out'
+    occurred_at: datetime = Field(default_factory=utcnow, index=True)
+    source: str = Field(default="kiosk")  # 'kiosk' | 'manager' | 'dev'
+    recorded_by: Optional[int] = Field(default=None, foreign_key="users.user_id")
+    note: Optional[str] = Field(default=None)

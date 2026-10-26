@@ -105,6 +105,24 @@ def _is_member(emp: Employees, store: Optional[Stores], non_oracle_brands: set[i
     return eff_brand is not None and eff_brand in non_oracle_brands
 
 
+def employee_is_non_oracle(session: Session, emp: Employees) -> bool:
+    """Single-employee membership check (loads the brand + store it needs).
+    Shared with the clock-in / fingerprint routes, which are scoped to the
+    non-Oracle roster."""
+    if emp.non_oracle_override is not None:
+        return emp.non_oracle_override
+    store = (
+        session.get(Stores, emp.primary_store_id)
+        if emp.primary_store_id is not None
+        else None
+    )
+    eff_brand = _effective_brand_id(emp, store)
+    if eff_brand is None:
+        return False
+    brand = session.get(Brands, eff_brand)
+    return bool(brand and brand.non_oracle)
+
+
 @router.get("/employees", response_model=list[EmployeeRead])
 def list_non_oracle_employees(
     current: CurrentUser = Depends(require_roles(*MANAGE_ROLES)),

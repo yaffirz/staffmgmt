@@ -260,6 +260,20 @@ Owner: Arif Asad Ali.
   roles Super Admin/Admin/IT, reusing `_enrich`/`_effective_brand_id`. This is the
   roster for the planned **fingerprint clock-in** system (DigitalPersona 4500),
   which is phase 2 and not yet built (changelog 0078).
+- **Clock-in system + fingerprints (done):** basic clock-in scoped to the
+  Non-Oracle roster. **Kiosk** page (no login, linked from the login screen) —
+  identity from a fingerprint template match; in dev mode (`clock_dev_mode`) it
+  can simulate a scan by picking an employee. **Manager-assisted** "Clock In
+  Staff" (dashboard tile for Super Admin/Admin/IT/Area Manager/Store/Foodmall) to
+  punch staff in/out on their behalf, role-scoped via `GET /clock/my-roster`.
+  **Fingerprint enrol/modify/remove** from the Non-Oracle screen's row menu
+  (Super Admin/Admin/IT). New tables `fingerprints` (opaque `template`, dev
+  stand-in) + `clock_events` (in/out, source kiosk/manager/dev); settings
+  `clock_in_enabled` + `clock_dev_mode` (Settings → Clock-in). Capture is
+  **pluggable** — the real DigitalPersona 4500 WebSDK (a local agent per machine)
+  drops into the `template` path later. API `routes/clock.py` (config/roster/
+  identify/punch public; manager-punch/my-roster/events auth) +
+  `routes/fingerprints.py` (changelog 0080).
 
 ## Known bugs fixed (Aug 2026)
 - **Recurring "replace child rows" 500s.** A helper that *deletes all child rows
