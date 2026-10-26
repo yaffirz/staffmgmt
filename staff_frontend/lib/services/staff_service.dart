@@ -9,6 +9,7 @@ import '../models/employee.dart';
 import '../models/form_field_config.dart';
 import '../models/maintenance_status.dart';
 import '../models/marketing_content.dart';
+import '../models/non_oracle_brand.dart';
 import '../models/registration_request.dart';
 import '../models/staff_note.dart';
 import '../models/store_summary.dart';
@@ -345,6 +346,42 @@ class StaffService {
     final data = await _api.patch(
       '/api/v1/employees/$employeeId/review-flag',
       {'fields': fields},
+    ) as Map<String, dynamic>;
+    return Employee.fromJson(data);
+  }
+
+  // ---- Non-Oracle employees ----
+
+  /// Brands with their non-Oracle flag (for the marking UI).
+  Future<List<NonOracleBrand>> nonOracleBrands() async {
+    final data = await _api.get('/api/v1/non-oracle/brands') as List;
+    return data
+        .map((e) => NonOracleBrand.fromJson(e as Map<String, dynamic>))
+        .toList(growable: false);
+  }
+
+  /// IT/Admin: mark a brand as (not) on Oracle.
+  Future<void> setBrandNonOracle(int brandId, bool nonOracle) async {
+    await _api.patch(
+      '/api/v1/non-oracle/brands/$brandId',
+      {'non_oracle': nonOracle},
+    );
+  }
+
+  /// Employees currently in the non-Oracle list.
+  Future<List<Employee>> nonOracleEmployees() async {
+    final data = await _api.get('/api/v1/non-oracle/employees') as List;
+    return data
+        .map((e) => Employee.fromJson(e as Map<String, dynamic>))
+        .toList(growable: false);
+  }
+
+  /// Move an employee in (true) / out (false) of the list, or clear the override
+  /// (null) to follow the brand again.
+  Future<Employee> setEmployeeNonOracle(int employeeId, bool? override) async {
+    final data = await _api.patch(
+      '/api/v1/non-oracle/employees/$employeeId',
+      {'override': override},
     ) as Map<String, dynamic>;
     return Employee.fromJson(data);
   }

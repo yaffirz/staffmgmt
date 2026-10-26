@@ -37,6 +37,10 @@ class Brands(SQLModel, table=True):
     brand_id: Optional[int] = Field(default=None, primary_key=True)
     tenant_id: int = Field(default=1, index=True)
     brand_name: str
+    # True = this brand is NOT on Oracle. IT/Admins mark it (Non-Oracle Employees
+    # screen); every employee of a non-Oracle brand appears in that list unless a
+    # per-employee override says otherwise. Added via non-destructive migration.
+    non_oracle: bool = Field(default=False)
 
 
 class Stores(SQLModel, table=True):
@@ -245,6 +249,13 @@ class Employees(SQLModel, table=True):
     # Drives "recently changed, unreviewed → top of the list". NULL = never
     # updated since creation.
     updated_at: Optional[datetime] = Field(default=None)
+    # Per-employee override of the brand-driven "non-Oracle" membership (for the
+    # Non-Oracle Employees list / future fingerprint clock-in). Tri-state:
+    #   NULL  = follow the brand (in the list iff the brand is non_oracle),
+    #   True  = force INTO the list (manually moved there), even on-Oracle brands,
+    #   False = force OUT of the list, even when the brand is non_oracle.
+    # Added via non-destructive migration.
+    non_oracle_override: Optional[bool] = Field(default=None)
 
 
 def touch_for_review(emp: "Employees") -> None:

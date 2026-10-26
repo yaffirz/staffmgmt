@@ -232,6 +232,7 @@ def _enrich(emp: Employees, session: Session) -> EmployeeRead:
         created_by_name=creator.username if creator else None,
         additional_stores=add_names,
         additional_store_ids=add_ids,
+        non_oracle_override=emp.non_oracle_override,
     )
 
 

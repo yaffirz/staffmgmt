@@ -59,6 +59,13 @@ _MIGRATIONS = [
     "review_fields JSONB NOT NULL DEFAULT '[]'::jsonb",
     # Last data-change time; drives "recently changed → top of the list".
     "ALTER TABLE employees ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP",
+    # "Non-Oracle" brand flag (IT/Admin-marked); its employees populate the
+    # Non-Oracle Employees list.
+    "ALTER TABLE brands ADD COLUMN IF NOT EXISTS "
+    "non_oracle BOOLEAN NOT NULL DEFAULT false",
+    # Per-employee override of the brand-driven non-Oracle membership (tri-state:
+    # NULL = follow brand, TRUE = force in, FALSE = force out).
+    "ALTER TABLE employees ADD COLUMN IF NOT EXISTS non_oracle_override BOOLEAN",
 ]
 
 

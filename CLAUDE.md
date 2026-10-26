@@ -249,6 +249,17 @@ Owner: Arif Asad Ali.
   active chip), and the employee list's default sort floats **all** unreviewed
   rows ahead of reviewed ones (recently-changed first) so reviewers see everything
   outstanding on page 1 — table and card views (changelog 0076).
+- **Non-Oracle Employees (done):** an Admin-hub card (IT / Admin / Super Admin)
+  where IT/Admins mark which **brands are not on Oracle** (`brands.non_oracle`);
+  every employee of a non-Oracle brand is auto-listed, with a **tri-state
+  per-employee override** (`employees.non_oracle_override`: NULL follow brand /
+  TRUE force in / FALSE force out) to move individuals in or out. The screen has
+  an **Employees** tab (searchable `PaginatedDataTable` like the employee list,
+  with an "Add employees" mover + per-row Remove/Reset) and a **Brands** tab of
+  non-Oracle switches. API `/api/v1/non-oracle/{brands,employees}` (GET + PATCH),
+  roles Super Admin/Admin/IT, reusing `_enrich`/`_effective_brand_id`. This is the
+  roster for the planned **fingerprint clock-in** system (DigitalPersona 4500),
+  which is phase 2 and not yet built (changelog 0078).
 
 ## Known bugs fixed (Aug 2026)
 - **Recurring "replace child rows" 500s.** A helper that *deletes all child rows

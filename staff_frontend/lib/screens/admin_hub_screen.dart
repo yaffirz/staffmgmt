@@ -10,6 +10,7 @@ import 'announcements_screen.dart';
 import 'audit_logs_screen.dart';
 import 'email_settings_screen.dart';
 import 'form_settings_screen.dart';
+import 'non_oracle_screen.dart';
 import 'registrations_screen.dart';
 import 'settings_screen.dart';
 import 'users_screen.dart';
@@ -23,6 +24,10 @@ class AdminHubScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final user = context.watch<AuthProvider>().user;
     final isSuper = user?.hasRole('Super Admin') ?? false;
+    // Non-Oracle marking + roster: IT and Admins (and Super Admin).
+    final canNonOracle = isSuper ||
+        (user?.hasRole('Admin') ?? false) ||
+        (user?.hasRole('IT') ?? false);
 
     final tiles = <Widget>[
       ModuleCard(
@@ -55,6 +60,13 @@ class AdminHubScreen extends StatelessWidget {
         subtitle: 'Customise form fields',
         onTap: () => _go(context, const FormSettingsScreen()),
       ),
+      if (canNonOracle)
+        ModuleCard(
+          icon: Icons.cloud_off_outlined,
+          title: 'Non-Oracle Employees',
+          subtitle: 'Mark brands off Oracle; move staff',
+          onTap: () => _go(context, const NonOracleScreen()),
+        ),
       ModuleCard(
         icon: Icons.settings_outlined,
         title: 'Settings',

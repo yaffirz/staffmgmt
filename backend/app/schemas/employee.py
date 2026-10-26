@@ -66,6 +66,9 @@ class EmployeeRead(BaseModel):
     created_by: Optional[int] = None
     reviewed_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None  # last data-change (edit/promote/store)
+    # Per-employee non-Oracle override (NULL = follow brand, True = forced in,
+    # False = forced out). Only populated by the Non-Oracle endpoints.
+    non_oracle_override: Optional[bool] = None
 
     # Resolved display names (option b) — populated by the endpoint.
     store_name: Optional[str] = None

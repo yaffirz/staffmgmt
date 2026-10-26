@@ -19,6 +19,7 @@ from app.api.routes import (
     lookups,
     maintenance,
     marketing,
+    non_oracle,
     notes,
     notifications,
     preferences,
@@ -83,6 +84,7 @@ app.include_router(backups.router)
 app.include_router(app_dist.router)
 app.include_router(email_admin.router)
 app.include_router(preferences.router)
+app.include_router(non_oracle.router)
 
 
 @app.get("/health", tags=["meta"])

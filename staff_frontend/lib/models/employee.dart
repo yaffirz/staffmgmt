@@ -27,6 +27,9 @@ class Employee {
   final String? createdByName;
   final DateTime? reviewedAt;
   final DateTime? updatedAt; // last data-change; floats recent edits to the top
+  // Non-Oracle list override: null = follows the brand, true = forced in,
+  // false = forced out. Only set by the Non-Oracle endpoints.
+  final bool? nonOracleOverride;
 
   const Employee({
     required this.employeeId,
@@ -57,6 +60,7 @@ class Employee {
     this.createdByName,
     this.reviewedAt,
     this.updatedAt,
+    this.nonOracleOverride,
   });
 
   factory Employee.fromJson(Map<String, dynamic> j) => Employee(
@@ -97,6 +101,7 @@ class Employee {
         createdByName: j['created_by_name'] as String?,
         reviewedAt: _parseDate(j['reviewed_at']),
         updatedAt: _parseDate(j['updated_at']),
+        nonOracleOverride: j['non_oracle_override'] as bool?,
       );
 
   static DateTime? _parseDate(dynamic v) {

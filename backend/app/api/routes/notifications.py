@@ -104,6 +104,39 @@ def unread_count(
     return UnreadCount(count=count)
 
 
+# Types a trusted sibling service may post in via /external (kept small on
+# purpose). Fixit posts FIXIT_PINNED so a new pin rides this same bell (API.md §7).
+EXTERNAL_TYPES = {"FIXIT_PINNED"}
+
+
+@router.post("/external", status_code=status.HTTP_201_CREATED)
+def external_notification(
+    body: dict,
+    current: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    """Accept a notification from a trusted sibling service (Fixit, API.md §7) so
+    its events appear under the existing bell. The caller authenticates with a
+    normal Staff Portal token (a service account); only allow-listed external
+    types are accepted, and only role-targeted (never arbitrary user-targeted)."""
+    ntype = (body.get("type") or "").strip()
+    if ntype not in EXTERNAL_TYPES:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Unsupported external notification type.",
+        )
+    notif = Notifications(
+        tenant_id=current.tenant_id,
+        recipient_role=(body.get("recipient_role") or "Admin"),
+        type=ntype,
+        payload=body.get("payload") or {},
+    )
+    session.add(notif)
+    session.commit()
+    session.refresh(notif)
+    return {"ok": True, "notification_id": notif.notification_id}
+
+
 @router.post("/{notification_id}/read", status_code=status.HTTP_204_NO_CONTENT)
 def mark_read(
     notification_id: int,
