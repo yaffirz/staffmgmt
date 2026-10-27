@@ -274,6 +274,18 @@ Owner: Arif Asad Ali.
   drops into the `template` path later. API `routes/clock.py` (config/roster/
   identify/punch public; manager-punch/my-roster/events auth) +
   `routes/fingerprints.py` (changelog 0080).
+- **Real fingerprint capture + matcher (done):** live capture via the DigitalPersona
+  **Web SDK** (open-source MIT, vendored in `staff_frontend/web/dp/`, bridged by
+  `web/dp/dp_fingerprint.js` → Dart `services/dp_fingerprint*.dart`). Enrol/re-scan
+  in **Manage fingerprints** capture a **PNG** and store it
+  (`{"fmt":"PngImage","samples":[…]}`). Matching by a new **`matcher/`** microservice
+  (SourceAFIS via `nodeafis` + `pngjs`; `docker compose build matcher`), internal
+  `http://matcher:9000`, backend `MATCHER_URL`. `POST /api/v1/fingerprints/verify`
+  scores a scan against an employee's enrolment (threshold 40); a **"Test a scan"**
+  button shows match/no-match. Reader needs HID's Non-WBF driver + Authentication
+  Device Client (agent on 127.0.0.1:52181); **no HID licence**. Non-Oracle list
+  switched from a tap-swallowing DataTable to a **card list**. See
+  `docs/FINGERPRINT.md` (changelog 0081).
 
 ## Known bugs fixed (Aug 2026)
 - **Recurring "replace child rows" 500s.** A helper that *deletes all child rows

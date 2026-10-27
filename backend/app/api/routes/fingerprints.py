@@ -6,7 +6,9 @@ capture layer; in dev (no reader) a random token stands in, and the real
 DigitalPersona WebSDK can supply a real template later without schema changes.
 """
 
+import json
 import secrets
+import urllib.request
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -16,6 +18,7 @@ from sqlmodel import Session, select
 
 from app.api.deps import require_roles
 from app.api.routes.non_oracle import employee_is_non_oracle
+from app.core.config import settings as app_config
 from app.core.database import get_session
 from app.models.models import AuditLogs, Employees, Fingerprints
 from app.schemas.auth import CurrentUser
@@ -207,3 +210,93 @@ def remove(
         )
     )
     session.commit()
+
+
+# ---- Verification (test a scan against the enrolment) ----
+
+
+class VerifyRequest(BaseModel):
+    employee_id: int
+    sample: str  # a freshly captured PNG (base64) — the probe
+
+
+class VerifyResult(BaseModel):
+    match: bool
+    score: float
+    threshold: float
+    finger_label: Optional[str] = None  # the enrolled finger that matched
+    enrolled_samples: int
+
+
+def _candidate_samples(rows: list[Fingerprints]) -> tuple[list[str], list[str]]:
+    """Flatten the stored PNG samples across an employee's fingerprints.
+    Returns (samples, labels) where labels[i] is the finger that sample i came
+    from. Dev placeholders (non-JSON templates) are skipped."""
+    samples: list[str] = []
+    labels: list[str] = []
+    for f in rows:
+        try:
+            parsed = json.loads(f.template)
+        except (ValueError, TypeError):
+            continue  # dev placeholder — not a real capture
+        if not isinstance(parsed, dict):
+            continue
+        for s in parsed.get("samples", []) or []:
+            if isinstance(s, str) and s:
+                samples.append(s)
+                labels.append(f.finger_label)
+    return samples, labels
+
+
+def _matcher_verify(probe: str, candidates: list[str]) -> dict:
+    """Call the matcher microservice. Raises on transport/HTTP errors."""
+    url = app_config.MATCHER_URL.rstrip("/") + "/verify"
+    body = json.dumps({"probe": probe, "candidates": candidates}).encode()
+    req = urllib.request.Request(
+        url, data=body, headers={"Content-Type": "application/json"}, method="POST"
+    )
+    with urllib.request.urlopen(req, timeout=30) as resp:  # noqa: S310 (internal URL)
+        return json.loads(resp.read().decode())
+
+
+@router.post("/verify", response_model=VerifyResult)
+def verify(
+    payload: VerifyRequest,
+    current: CurrentUser = Depends(require_roles(*MANAGE_ROLES)),
+    session: Session = Depends(get_session),
+):
+    """Test a fresh scan against an employee's enrolled fingerprints (1:N over
+    their fingers). Returns whether it matches, the best score, and which finger."""
+    _require_non_oracle_employee(session, payload.employee_id, current.tenant_id)
+    if not (payload.sample or "").strip():
+        raise HTTPException(status_code=422, detail="A scan is required.")
+    rows = session.exec(
+        select(Fingerprints).where(Fingerprints.employee_id == payload.employee_id)
+    ).all()
+    candidates, labels = _candidate_samples(rows)
+    if not candidates:
+        raise HTTPException(
+            status_code=400,
+            detail="No captured fingerprint on file to test against "
+            "(re-register with the reader).",
+        )
+    try:
+        res = _matcher_verify(payload.sample, candidates)
+    except Exception as exc:  # noqa: BLE001 — surface a clean message
+        raise HTTPException(
+            status_code=502, detail=f"Matcher unavailable: {exc}"
+        ) from exc
+    best_index = res.get("bestIndex", -1)
+    matched = bool(res.get("match"))
+    label = (
+        labels[best_index]
+        if isinstance(best_index, int) and 0 <= best_index < len(labels)
+        else None
+    )
+    return VerifyResult(
+        match=matched,
+        score=float(res.get("score", -1)),
+        threshold=float(res.get("threshold", 40)),
+        finger_label=label if matched else None,
+        enrolled_samples=len(candidates),
+    )

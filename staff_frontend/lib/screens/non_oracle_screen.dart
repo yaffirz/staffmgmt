@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -5,6 +7,7 @@ import '../models/clock.dart';
 import '../models/employee.dart';
 import '../models/non_oracle_brand.dart';
 import '../services/api_client.dart';
+import '../services/dp_fingerprint.dart';
 import '../services/staff_service.dart';
 import '../widgets/app_scaffold.dart';
 
@@ -108,6 +111,55 @@ class _NonOracleScreenState extends State<NonOracleScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Could not update the employee.')));
     }
+  }
+
+  /// Per-employee actions, opened by tapping the row or its Actions button.
+  void _showRowActions(Employee e) {
+    showModalBottomSheet<void>(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(e.employeeName,
+                    style: const TextStyle(
+                        fontSize: 16, fontWeight: FontWeight.w700)),
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.fingerprint),
+              title: const Text('Manage fingerprints'),
+              onTap: () {
+                Navigator.pop(ctx);
+                _manageFingerprints(e);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.remove_circle_outline),
+              title: const Text('Remove from list'),
+              onTap: () {
+                Navigator.pop(ctx);
+                _setOverride(e, false);
+              },
+            ),
+            if (e.nonOracleOverride != null)
+              ListTile(
+                leading: const Icon(Icons.restart_alt),
+                title: const Text('Reset to brand default'),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _setOverride(e, null);
+                },
+              ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
   }
 
   Future<void> _manageFingerprints(Employee e) async {
@@ -218,36 +270,85 @@ class _NonOracleScreenState extends State<NonOracleScreen> {
           )
         else
           Expanded(
-            child: SingleChildScrollView(
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: PaginatedDataTable(
-                  header: Text('${filtered.length} employee(s)',
-                      style: const TextStyle(fontSize: 14)),
-                  rowsPerPage: 25,
-                  availableRowsPerPage: const [25, 50, 100],
-                  columns: const [
-                    DataColumn(label: Text('Name')),
-                    DataColumn(label: Text('Payroll ID')),
-                    DataColumn(label: Text('Brand')),
-                    DataColumn(label: Text('Store')),
-                    DataColumn(label: Text('Position')),
-                    DataColumn(label: Text('Phone')),
-                    DataColumn(label: Text('Email')),
-                    DataColumn(label: Text('In list via')),
-                    DataColumn(label: Text('')),
-                  ],
-                  source: _NonOracleSource(
-                    filtered,
-                    cs,
-                    onSetOverride: _setOverride,
-                    onManageFingerprints: _manageFingerprints,
-                  ),
-                ),
-              ),
+            child: ListView.separated(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+              itemCount: filtered.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 8),
+              itemBuilder: (_, i) => _employeeCard(cs, filtered[i]),
             ),
           ),
       ],
+    );
+  }
+
+  Widget _employeeCard(ColorScheme cs, Employee e) {
+    final movedIn = e.nonOracleOverride == true;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final facts = <String>[
+      e.payrollId,
+      if ((e.brandName ?? '').isNotEmpty) e.brandName!,
+      if ((e.storeName ?? '').isNotEmpty) e.storeName!,
+      if ((e.positionTitle ?? '').isNotEmpty) e.positionTitle!,
+    ];
+    return Material(
+      color: isDark ? cs.surfaceContainerHigh : Colors.white,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: () => _showRowActions(e),
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: cs.outlineVariant),
+          ),
+          padding: const EdgeInsets.fromLTRB(14, 10, 4, 10),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(e.employeeName,
+                        style: const TextStyle(
+                            fontSize: 15, fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 2),
+                    Text(facts.join('  ·  '),
+                        style: TextStyle(
+                            fontSize: 12.5, color: cs.onSurfaceVariant)),
+                    if ((e.email ?? '').isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Text(e.email!,
+                          style: TextStyle(
+                              fontSize: 12, color: cs.onSurfaceVariant)),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              _sourceChip(movedIn),
+              IconButton(
+                tooltip: 'Actions',
+                icon: const Icon(Icons.more_vert),
+                onPressed: () => _showRowActions(e),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _sourceChip(bool movedIn) {
+    final color = movedIn ? const Color(0xFF1565C0) : const Color(0xFFB26A00);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(movedIn ? 'Moved in' : 'Brand',
+          style: TextStyle(
+              fontSize: 11.5, fontWeight: FontWeight.w600, color: color)),
     );
   }
 
@@ -284,81 +385,6 @@ class _NonOracleScreenState extends State<NonOracleScreen> {
       ],
     );
   }
-}
-
-class _NonOracleSource extends DataTableSource {
-  final List<Employee> rows;
-  final ColorScheme cs;
-  final Future<void> Function(Employee, bool?) onSetOverride;
-  final Future<void> Function(Employee) onManageFingerprints;
-
-  _NonOracleSource(this.rows, this.cs,
-      {required this.onSetOverride, required this.onManageFingerprints});
-
-  @override
-  DataRow? getRow(int index) {
-    if (index >= rows.length) return null;
-    final e = rows[index];
-    final movedIn = e.nonOracleOverride == true;
-    return DataRow(cells: [
-      DataCell(Text(e.employeeName,
-          style: const TextStyle(fontWeight: FontWeight.w600))),
-      DataCell(Text(e.payrollId)),
-      DataCell(Text(e.brandName ?? '—')),
-      DataCell(Text(e.storeName ?? '—')),
-      DataCell(Text(e.positionTitle ?? '—')),
-      DataCell(Text(e.phoneNumber ?? '—')),
-      DataCell(Text(e.email ?? '—')),
-      DataCell(_sourceChip(movedIn)),
-      DataCell(PopupMenuButton<String>(
-        tooltip: 'More',
-        icon: const Icon(Icons.more_vert, size: 20),
-        onSelected: (v) {
-          switch (v) {
-            case 'fingerprints':
-              onManageFingerprints(e);
-              break;
-            case 'remove':
-              onSetOverride(e, false); // force out of the list
-              break;
-            case 'reset':
-              onSetOverride(e, null); // follow the brand again
-              break;
-          }
-        },
-        itemBuilder: (_) => [
-          const PopupMenuItem(
-              value: 'fingerprints', child: Text('Manage fingerprints')),
-          const PopupMenuItem(
-              value: 'remove', child: Text('Remove from list')),
-          if (e.nonOracleOverride != null)
-            const PopupMenuItem(
-                value: 'reset', child: Text('Reset to brand default')),
-        ],
-      )),
-    ]);
-  }
-
-  Widget _sourceChip(bool movedIn) {
-    final color = movedIn ? const Color(0xFF1565C0) : const Color(0xFFB26A00);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(movedIn ? 'Moved in' : 'Brand',
-          style: TextStyle(
-              fontSize: 11.5, fontWeight: FontWeight.w600, color: color)),
-    );
-  }
-
-  @override
-  bool get isRowCountApproximate => false;
-  @override
-  int get rowCount => rows.length;
-  @override
-  int get selectedRowCount => 0;
 }
 
 /// Picker to manually move employees into the non-Oracle list (sets override
@@ -547,16 +573,32 @@ class _FingerprintsDialogState extends State<_FingerprintsDialog> {
     return kFingerLabels.where((f) => !used.contains(f)).toList();
   }
 
+  /// Capture a template from the reader (or a dev placeholder). Returns the
+  /// template string to store, `''` to let the backend generate a dev
+  /// placeholder, or null if the user cancelled.
+  Future<String?> _acquireTemplate() async {
+    if (!fingerprintReaderAvailable) return ''; // no SDK → dev placeholder
+    return showDialog<String>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const _CaptureDialog(),
+    );
+  }
+
   Future<void> _enroll() async {
     final available = _availableFingers;
     if (available.isEmpty) return;
     final label = await _pickFinger(available);
     if (label == null || !mounted) return;
+    final template = await _acquireTemplate();
+    if (template == null || !mounted) return; // cancelled
     setState(() => _busy = true);
     try {
-      await context
-          .read<StaffService>()
-          .enrollFingerprint(widget.employee.employeeId, label);
+      await context.read<StaffService>().enrollFingerprint(
+            widget.employee.employeeId,
+            label,
+            template: template.isEmpty ? null : template,
+          );
       await _load();
     } on ApiException catch (e) {
       if (!mounted) return;
@@ -568,12 +610,13 @@ class _FingerprintsDialogState extends State<_FingerprintsDialog> {
   }
 
   Future<void> _rescan(Fingerprint f) async {
+    final template = await _acquireTemplate();
+    if (template == null || !mounted) return; // cancelled
     setState(() => _busy = true);
     try {
-      // Re-enrol: a fresh stand-in template (the reader would supply a real one).
       await context
           .read<StaffService>()
-          .modifyFingerprint(f.fingerprintId, template: '');
+          .modifyFingerprint(f.fingerprintId, template: template);
       await _load();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -592,6 +635,91 @@ class _FingerprintsDialogState extends State<_FingerprintsDialog> {
     } finally {
       if (mounted) setState(() => _busy = false);
     }
+  }
+
+  /// Capture a scan and check it against this employee's enrolled prints.
+  Future<void> _test() async {
+    if (!fingerprintReaderAvailable) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No reader detected.')));
+      return;
+    }
+    final tpl = await showDialog<String>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const _CaptureDialog(),
+    );
+    if (tpl == null || tpl.isEmpty || !mounted) return; // cancelled / dev skip
+    List<String> samples;
+    try {
+      samples = ((jsonDecode(tpl) as Map)['samples'] as List).cast<String>();
+    } catch (_) {
+      samples = const [];
+    }
+    if (samples.isEmpty) return;
+    setState(() => _busy = true);
+    FingerprintMatch? result;
+    String? error;
+    try {
+      result = await context
+          .read<StaffService>()
+          .verifyFingerprint(widget.employee.employeeId, samples.first);
+    } on ApiException catch (e) {
+      error = e.message;
+    } catch (_) {
+      error = 'Could not run the match.';
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+    if (!mounted) return;
+    _showTestResult(result, error);
+  }
+
+  void _showTestResult(FingerprintMatch? r, String? error) {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) {
+        final ok = r?.match ?? false;
+        return AlertDialog(
+          title: Text(error != null
+              ? 'Test failed'
+              : (ok ? 'Match ✓' : 'No match')),
+          content: error != null
+              ? Text(error)
+              : Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(ok ? Icons.verified : Icons.cancel_outlined,
+                        size: 56,
+                        color: ok
+                            ? const Color(0xFF2E7D43)
+                            : const Color(0xFFB3261E)),
+                    const SizedBox(height: 12),
+                    Text(
+                      ok
+                          ? 'Recognised as '
+                              '${fingerLabelPretty(r!.fingerLabel ?? '')}.'
+                          : 'This scan did not match the enrolment.',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Score ${r!.score.toStringAsFixed(1)}  '
+                      '(match at ≥ ${r.threshold.toStringAsFixed(0)})',
+                      style: TextStyle(
+                          fontSize: 12.5,
+                          color: Theme.of(ctx).colorScheme.onSurfaceVariant),
+                    ),
+                  ],
+                ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(ctx), child: const Text('Done')),
+          ],
+        );
+      },
+    );
   }
 
   Future<String?> _pickFinger(List<String> fingers) {
@@ -659,24 +787,40 @@ class _FingerprintsDialogState extends State<_FingerprintsDialog> {
                               ),
                             )),
                       const SizedBox(height: 8),
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: OutlinedButton.icon(
-                          onPressed: (_busy || _availableFingers.isEmpty)
-                              ? null
-                              : _enroll,
-                          icon: const Icon(Icons.add, size: 18),
-                          label: Text(_availableFingers.isEmpty
-                              ? 'All fingers enrolled'
-                              : 'Register a finger'),
-                        ),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          OutlinedButton.icon(
+                            onPressed: (_busy || _availableFingers.isEmpty)
+                                ? null
+                                : _enroll,
+                            icon: const Icon(Icons.add, size: 18),
+                            label: Text(_availableFingers.isEmpty
+                                ? 'All fingers enrolled'
+                                : 'Register a finger'),
+                          ),
+                          if (_prints.isNotEmpty)
+                            FilledButton.tonalIcon(
+                              onPressed: _busy ? null : _test,
+                              icon: const Icon(Icons.verified_user_outlined,
+                                  size: 18),
+                              label: const Text('Test a scan'),
+                            ),
+                        ],
                       ),
                       const SizedBox(height: 6),
                       Text(
-                        'No reader wired yet — enrolling stores a placeholder so '
-                        'the flow is testable. The real scanner drops in later.',
+                        fingerprintReaderAvailable
+                            ? 'Registering captures a live scan from the '
+                                'connected reader.'
+                            : 'No reader detected — enrolling stores a '
+                                'placeholder so the flow is testable.',
                         style: TextStyle(
-                            fontSize: 11.5, color: cs.onSurfaceVariant),
+                            fontSize: 11.5,
+                            color: fingerprintReaderAvailable
+                                ? const Color(0xFF2E7D43)
+                                : cs.onSurfaceVariant),
                       ),
                     ],
                   ),
@@ -686,6 +830,94 @@ class _FingerprintsDialogState extends State<_FingerprintsDialog> {
           onPressed: () => Navigator.pop(context),
           child: const Text('Close'),
         ),
+      ],
+    );
+  }
+}
+
+/// Modal that captures a live fingerprint from the connected reader. Pops with a
+/// JSON template string on success, `''` if the operator chooses to enrol
+/// without a scan (dev placeholder), or null if cancelled.
+class _CaptureDialog extends StatefulWidget {
+  const _CaptureDialog();
+
+  @override
+  State<_CaptureDialog> createState() => _CaptureDialogState();
+}
+
+class _CaptureDialogState extends State<_CaptureDialog> {
+  bool _scanning = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _scan();
+  }
+
+  Future<void> _scan() async {
+    setState(() {
+      _scanning = true;
+      _error = null;
+    });
+    try {
+      final samples = await captureFingerprintSamples(timeoutMs: 20000);
+      if (!mounted) return;
+      if (samples.isEmpty) {
+        setState(() {
+          _scanning = false;
+          _error = 'No fingerprint captured. Try again.';
+        });
+        return;
+      }
+      Navigator.of(context)
+          .pop(jsonEncode({'fmt': 'PngImage', 'samples': samples}));
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _scanning = false;
+        _error = e.toString().replaceFirst('Exception: ', '');
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return AlertDialog(
+      title: const Text('Scan fingerprint'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.fingerprint,
+              size: 72, color: _error == null ? cs.primary : cs.error),
+          const SizedBox(height: 16),
+          if (_scanning) ...[
+            const CircularProgressIndicator(),
+            const SizedBox(height: 14),
+            const Text('Place your finger on the reader…',
+                textAlign: TextAlign.center),
+          ] else if (_error != null)
+            Text(_error!,
+                textAlign: TextAlign.center,
+                style: TextStyle(color: cs.error)),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () {
+            cancelFingerprintCapture();
+            Navigator.of(context).pop();
+          },
+          child: const Text('Cancel'),
+        ),
+        if (!_scanning && _error != null) ...[
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(''),
+            child: const Text('Enrol without scan'),
+          ),
+          FilledButton(onPressed: _scan, child: const Text('Retry')),
+        ],
       ],
     );
   }

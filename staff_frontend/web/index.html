@@ -43,6 +43,18 @@
     For more details:
     * https://docs.flutter.dev/platform-integration/web/initialization
   -->
+  <!-- DigitalPersona fingerprint Web SDK (vendored, MIT). Loaded in order:
+       WebSdk client (defines window.WebSdk/WebSdkCore), then the @digitalpersona
+       core/services/devices bundles (window.dp.*), then our bridge
+       (window.dpFingerprint). These only connect to the local reader agent when
+       capture is invoked, so loading them is cheap and safe when no reader is
+       present. -->
+  <script src="dp/websdk.client.js"></script>
+  <script src="dp/core.umd.min.js"></script>
+  <script src="dp/services.umd.min.js"></script>
+  <script src="dp/devices.umd.min.js"></script>
+  <script src="dp/dp_fingerprint.js"></script>
+
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>

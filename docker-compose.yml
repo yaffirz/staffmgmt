@@ -40,6 +40,8 @@ services:
       BACKUP_DIR: /code/backups
       # Where the published Android APK is served from (see docs).
       APP_DIST_DIR: /code/public
+      # Fingerprint matcher microservice (SourceAFIS via nodeafis).
+      MATCHER_URL: ${MATCHER_URL:-http://matcher:9000}
     ports:
       - "8000:8000"
     # For local dev: live-reload when you edit code on the host.
@@ -53,6 +55,17 @@ services:
       # Published Android APK, served read-only to signed-in users.
       - ./public:/code/public:ro
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  # Fingerprint matcher — SourceAFIS (via nodeafis) behind a tiny HTTP API.
+  # Internal only (no host port); the backend reaches it at http://matcher:9000.
+  matcher:
+    build:
+      context: ./matcher
+      dockerfile: Dockerfile
+    container_name: staffmgmt_matcher
+    restart: unless-stopped
+    expose:
+      - "9000"
 
   # Cloudflare tunnel — publishes the app on your Cloudflare hostname without
   # opening any inbound ports. Only runs when you opt in with the "tunnel"

@@ -16,6 +16,9 @@ class Settings(BaseSettings):
     SEED_ADMIN_PASSWORD: str = "ChangeMe123!"
     DEFAULT_TENANT_ID: int = 1
 
+    # Fingerprint matcher microservice (SourceAFIS via nodeafis).
+    MATCHER_URL: str = "http://matcher:9000"
+
     # Dev-only: seed a known-credentials Area Manager over the "Pizza Boys" brand
     # so the Phase 2 cluster flows are testable end-to-end. Idempotent. Set
     # SEED_DEV_AREA_MANAGER=false in real deployments to skip it.

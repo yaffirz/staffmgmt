@@ -123,6 +123,31 @@ class Fingerprint {
       );
 }
 
+/// Result of testing a scan against an employee's enrolled fingerprints.
+class FingerprintMatch {
+  final bool match;
+  final double score;
+  final double threshold;
+  final String? fingerLabel; // the enrolled finger that matched
+  final int enrolledSamples;
+
+  const FingerprintMatch({
+    required this.match,
+    required this.score,
+    required this.threshold,
+    this.fingerLabel,
+    required this.enrolledSamples,
+  });
+
+  factory FingerprintMatch.fromJson(Map<String, dynamic> j) => FingerprintMatch(
+        match: (j['match'] as bool?) ?? false,
+        score: (j['score'] as num?)?.toDouble() ?? -1,
+        threshold: (j['threshold'] as num?)?.toDouble() ?? 40,
+        fingerLabel: j['finger_label'] as String?,
+        enrolledSamples: (j['enrolled_samples'] as int?) ?? 0,
+      );
+}
+
 /// Fingers offered in the enrol UI (must match the backend FINGER_LABELS).
 const List<String> kFingerLabels = [
   'left-thumb',

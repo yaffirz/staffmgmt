@@ -486,6 +486,15 @@ class StaffService {
     await _api.delete('/api/v1/fingerprints/$fingerprintId');
   }
 
+  /// Test a captured scan against an employee's enrolled fingerprints.
+  Future<FingerprintMatch> verifyFingerprint(int employeeId, String sample) async {
+    final data = await _api.post('/api/v1/fingerprints/verify', {
+      'employee_id': employeeId,
+      'sample': sample,
+    }) as Map<String, dynamic>;
+    return FingerprintMatch.fromJson(data);
+  }
+
   /// Suggested next MAG card number (auto-increments from 70000000).
   Future<String?> nextMagCode() async {
     final data =
