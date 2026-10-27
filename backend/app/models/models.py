@@ -515,3 +515,22 @@ class ClockEvents(SQLModel, table=True):
     source: str = Field(default="kiosk")  # 'kiosk' | 'manager' | 'dev'
     recorded_by: Optional[int] = Field(default=None, foreign_key="users.user_id")
     note: Optional[str] = Field(default=None)
+
+
+class Shifts(SQLModel, table=True):
+    """A scheduled shift for one employee on one date — the "Roster" column of the
+    attendance register. `roster` is free text (e.g. "7-3pm", "OFF", "VACATION")
+    so it matches however managers write schedules."""
+
+    __tablename__ = "shifts"
+    __table_args__ = (
+        UniqueConstraint("employee_id", "work_date", name="uq_shift_emp_date"),
+    )
+
+    shift_id: Optional[int] = Field(default=None, primary_key=True)
+    tenant_id: int = Field(default=1, index=True)
+    employee_id: int = Field(foreign_key="employees.employee_id", index=True)
+    work_date: date = Field(index=True)
+    roster: str  # free text shift, e.g. "7-3pm" / "OFF" / "VACATION"
+    created_by: Optional[int] = Field(default=None, foreign_key="users.user_id")
+    updated_at: datetime = Field(default_factory=utcnow)

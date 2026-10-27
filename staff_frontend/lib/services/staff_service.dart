@@ -1,5 +1,6 @@
 import '../models/app_notification.dart';
 import '../models/app_info.dart';
+import '../models/attendance.dart';
 import '../models/audit_log.dart';
 import '../models/backup_item.dart';
 import '../models/bulk_result.dart';
@@ -385,6 +386,31 @@ class StaffService {
       {'override': override},
     ) as Map<String, dynamic>;
     return Employee.fromJson(data);
+  }
+
+  // ---- Attendance register ----
+
+  Future<List<AttendanceStore>> attendanceStores() async {
+    final data = await _api.get('/api/v1/attendance/stores') as List;
+    return data
+        .map((e) => AttendanceStore.fromJson(e as Map<String, dynamic>))
+        .toList(growable: false);
+  }
+
+  Future<AttendanceRegister> attendanceRegister(int storeId, String weekStart) async {
+    final data = await _api.get(
+      '/api/v1/attendance/register?store_id=$storeId&week_start=$weekStart',
+    ) as Map<String, dynamic>;
+    return AttendanceRegister.fromJson(data);
+  }
+
+  /// Set or clear (blank) an employee's roster for a date (YYYY-MM-DD).
+  Future<void> setShift(int employeeId, String workDate, String roster) async {
+    await _api.put('/api/v1/attendance/shift', {
+      'employee_id': employeeId,
+      'work_date': workDate,
+      'roster': roster,
+    });
   }
 
   // ---- Clock-in / fingerprints ----

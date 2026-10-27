@@ -9,6 +9,7 @@ from sqlmodel import Session
 from app.api.routes import (
     announcements,
     app_dist,
+    attendance,
     audit,
     auth,
     backups,
@@ -89,6 +90,7 @@ app.include_router(preferences.router)
 app.include_router(non_oracle.router)
 app.include_router(fingerprints.router)
 app.include_router(clock.router)
+app.include_router(attendance.router)
 
 
 @app.get("/health", tags=["meta"])
