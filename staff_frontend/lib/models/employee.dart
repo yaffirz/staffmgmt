@@ -30,6 +30,9 @@ class Employee {
   // Non-Oracle list override: null = follows the brand, true = forced in,
   // false = forced out. Only set by the Non-Oracle endpoints.
   final bool? nonOracleOverride;
+  // True = a clock-in (Non-Oracle) staffer belonging only to non-Oracle brands;
+  // hidden by default in the All-employees list.
+  final bool clockInOnly;
 
   const Employee({
     required this.employeeId,
@@ -61,6 +64,7 @@ class Employee {
     this.reviewedAt,
     this.updatedAt,
     this.nonOracleOverride,
+    this.clockInOnly = false,
   });
 
   factory Employee.fromJson(Map<String, dynamic> j) => Employee(
@@ -102,6 +106,7 @@ class Employee {
         reviewedAt: _parseDate(j['reviewed_at']),
         updatedAt: _parseDate(j['updated_at']),
         nonOracleOverride: j['non_oracle_override'] as bool?,
+        clockInOnly: (j['clock_in_only'] as bool?) ?? false,
       );
 
   static DateTime? _parseDate(dynamic v) {

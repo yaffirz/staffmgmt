@@ -69,6 +69,10 @@ class EmployeeRead(BaseModel):
     # Per-employee non-Oracle override (NULL = follow brand, True = forced in,
     # False = forced out). Only populated by the Non-Oracle endpoints.
     non_oracle_override: Optional[bool] = None
+    # True = this employee is a clock-in (Non-Oracle) staffer and belongs ONLY to
+    # non-Oracle brands — hidden by default in the All-employees list. False if
+    # they also belong to a regular brand (then always shown).
+    clock_in_only: bool = False
 
     # Resolved display names (option b) — populated by the endpoint.
     store_name: Optional[str] = None

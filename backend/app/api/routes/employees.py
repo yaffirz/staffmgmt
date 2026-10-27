@@ -410,6 +410,10 @@ def list_employees(
         for v in add_names_by_emp.values():
             v.sort()
 
+    non_oracle_brand_ids = {
+        bid for bid, b in brands.items() if getattr(b, "non_oracle", False)
+    }
+
     result: list[EmployeeRead] = []
     for emp in employees:
         store = stores.get(emp.primary_store_id)
@@ -419,8 +423,27 @@ def list_employees(
         brand = brands.get(eff_brand_id) if eff_brand_id is not None else None
         position = positions.get(emp.position_id)
         country = countries.get(emp.country_id)
+        # "Clock-in only": a Non-Oracle staffer whose brands are ALL non-Oracle.
+        # If they also belong to a regular brand (via an additional store), keep
+        # them visible. Hidden by default in the All-employees list.
+        if emp.non_oracle_override is not None:
+            member = emp.non_oracle_override
+        else:
+            member = eff_brand_id is not None and eff_brand_id in non_oracle_brand_ids
+        emp_brand_ids = set()
+        if eff_brand_id is not None:
+            emp_brand_ids.add(eff_brand_id)
+        for sid in add_ids_by_emp.get(emp.employee_id, []):
+            st = stores.get(sid)
+            if st is not None:
+                emp_brand_ids.add(st.brand_id)
+        spans_regular = any(
+            bid not in non_oracle_brand_ids for bid in emp_brand_ids
+        )
+        clock_in_only = bool(member) and not spans_regular
         result.append(
             EmployeeRead(
+                clock_in_only=clock_in_only,
                 employee_id=emp.employee_id,
                 tenant_id=emp.tenant_id,
                 payroll_id=emp.payroll_id,

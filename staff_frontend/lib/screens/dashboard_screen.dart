@@ -253,16 +253,10 @@ class _DashboardBody extends StatelessWidget {
               dest: _Dest.allNotes),
         ];
       case 'Store':
-        return const [
-          _Module('My Store', Icons.store_outlined, 'Staff at your store',
-              dest: _Dest.myStore),
-        ];
       case 'Foodmall':
-        return const [
-          _Module('My Foodmall', Icons.storefront_outlined,
-              'Staff across your foodmall brands',
-              dest: _Dest.myStore),
-        ];
+        // Store-level accounts run the clock-in station — they get only the
+        // three clock tiles (injected below), no employee list.
+        return const [];
       default:
         return const [
           _Module('Staff Notes', Icons.sticky_note_2_outlined,
