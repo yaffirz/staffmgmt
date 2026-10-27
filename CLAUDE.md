@@ -286,6 +286,20 @@ Owner: Arif Asad Ali.
   Device Client (agent on 127.0.0.1:52181); **no HID licence**. Non-Oracle list
   switched from a tap-swallowing DataTable to a **card list**. See
   `docs/FINGERPRINT.md` (changelog 0081).
+- **Attendance register + scheduling (done):** a weekly, per-store register
+  formatted like the paper one. New `shifts` table (free-text `roster` per
+  employee+date, editable inline) = the "Roster" column; IN/OUT/Hours come from
+  `clock_events` (converted to AST). `routes/attendance.py`
+  (`GET /register?store_id=&week_start=`, `GET /stores`, `PUT /shift`), roles
+  Super Admin/Admin/IT/Area Manager/Store/Foodmall (store-scoped). Frontend
+  **Attendance Register** dashboard tile + screen (store/week pickers, editable
+  roster) with **print/PDF** via the pure-Dart `pdf` package opened in a new tab
+  (`services/pdf_open*.dart`; avoids the native `printing` plugin). PDF text is
+  ASCII-folded (base font = Helvetica) and columns are fixed-width/no-wrap
+  (changelog 0082, 0083).
+- **Clock-in entry points (done):** the kiosk opens from the login screen's
+  "Clock-in station" link AND a **Clock-in Station** dashboard tile; managers also
+  get **Clock In Staff** and **Attendance Register** tiles (changelog 0083).
 
 ## Known bugs fixed (Aug 2026)
 - **Recurring "replace child rows" 500s.** A helper that *deletes all child rows

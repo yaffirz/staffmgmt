@@ -21,7 +21,7 @@ Future<void> printAttendanceRegister(
             pw.Text('ATTENDANCE REGISTER',
                 style: pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold)),
             pw.SizedBox(height: 2),
-            pw.Text('${reg.storeName}   •   $weekLabel',
+            pw.Text('${reg.storeName}    ${_ascii(weekLabel)}',
                 style: const pw.TextStyle(fontSize: 10)),
             pw.Divider(thickness: 0.8),
           ],
@@ -41,21 +41,30 @@ Future<void> printAttendanceRegister(
   openPdf('attendance_${safe}_${reg.weekStart}.pdf', bytes);
 }
 
+/// The standard PDF font (Helvetica) only reliably renders ASCII, so typographic
+/// characters (en-dash, bullet, middle-dot) come out as boxes. Fold them to ASCII.
+String _ascii(String s) => s
+    .replaceAll('–', '-') // –
+    .replaceAll('—', '-') // —
+    .replaceAll('•', '-') // •
+    .replaceAll('·', '-'); // ·
+
 final _border = pw.TableBorder.all(color: PdfColors.grey500, width: 0.5);
-const _hdrStyle = pw.TextStyle(fontSize: 7, fontWeight: pw.FontWeight.bold);
-const _cellStyle = pw.TextStyle(fontSize: 7.5);
+const _hdrStyle = pw.TextStyle(fontSize: 7.5, fontWeight: pw.FontWeight.bold);
+const _cellStyle = pw.TextStyle(fontSize: 8);
 
 pw.Widget _cell(String text,
     {pw.TextStyle style = _cellStyle, pw.TextAlign align = pw.TextAlign.left}) {
   return pw.Padding(
-    padding: const pw.EdgeInsets.symmetric(horizontal: 3, vertical: 2.5),
-    child: pw.Text(text, style: style, textAlign: align),
+    padding: const pw.EdgeInsets.symmetric(horizontal: 3, vertical: 3),
+    child: pw.Text(_ascii(text),
+        style: style, textAlign: align, maxLines: 1, softWrap: false),
   );
 }
 
 pw.Widget _employeeTable(AttendanceRow row) {
   return pw.Container(
-    width: 250,
+    width: 262,
     child: pw.Column(
       crossAxisAlignment: pw.CrossAxisAlignment.start,
       children: [
@@ -64,10 +73,10 @@ pw.Widget _employeeTable(AttendanceRow row) {
           child: pw.Row(
             mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
             children: [
-              pw.Text(row.employeeName,
+              pw.Text(_ascii(row.employeeName),
                   style:
                       pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
-              pw.Text('#${row.payrollId}',
+              pw.Text('#${_ascii(row.payrollId)}',
                   style: const pw.TextStyle(fontSize: 7, color: PdfColors.grey700)),
             ],
           ),
@@ -75,12 +84,12 @@ pw.Widget _employeeTable(AttendanceRow row) {
         pw.Table(
           border: _border,
           columnWidths: const {
-            0: pw.FixedColumnWidth(44),
-            1: pw.FixedColumnWidth(16),
+            0: pw.FixedColumnWidth(60),
+            1: pw.FixedColumnWidth(18),
             2: pw.FlexColumnWidth(1),
-            3: pw.FixedColumnWidth(40),
-            4: pw.FixedColumnWidth(40),
-            5: pw.FixedColumnWidth(26),
+            3: pw.FixedColumnWidth(46),
+            4: pw.FixedColumnWidth(46),
+            5: pw.FixedColumnWidth(28),
           },
           children: [
             pw.TableRow(

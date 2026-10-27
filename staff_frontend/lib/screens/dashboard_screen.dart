@@ -14,6 +14,7 @@ import 'all_notes_screen.dart';
 import 'brands_stores_hub_screen.dart';
 import 'cross_store_screen.dart';
 import 'attendance_register_screen.dart';
+import 'clock_kiosk_screen.dart';
 import 'clock_manager_screen.dart';
 import 'employees_hub_screen.dart';
 import 'my_cluster_screen.dart';
@@ -106,6 +107,9 @@ void _open(BuildContext context, _Dest dest) {
     case _Dest.attendance:
       screen = const AttendanceRegisterScreen();
       break;
+    case _Dest.kiosk:
+      screen = const ClockKioskScreen();
+      break;
     case _Dest.none:
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('The bell (top right) now handles this.')),
@@ -186,6 +190,7 @@ class _DashboardBody extends StatelessWidget {
       'Foodmall',
     };
     if (roles.any(clockRoles.contains)) {
+      if (seen.add(_kioskModule.title)) out.add(_kioskModule);
       if (seen.add(_clockModule.title)) out.add(_clockModule);
       if (seen.add(_attendanceModule.title)) out.add(_attendanceModule);
     }
@@ -281,6 +286,7 @@ enum _Dest {
   adminHub,
   clockManager,
   attendance,
+  kiosk,
 }
 
 // Clock-in tiles, shared by the roles that may clock employees in/out.
@@ -288,6 +294,8 @@ const _Module _clockModule = _Module('Clock In Staff', Icons.punch_clock_outline
     'Clock staff in/out', dest: _Dest.clockManager);
 const _Module _attendanceModule = _Module('Attendance Register',
     Icons.event_note_outlined, 'Weekly roster & hours', dest: _Dest.attendance);
+const _Module _kioskModule = _Module('Clock-in Station', Icons.fingerprint,
+    'Open the scan-in kiosk', dest: _Dest.kiosk);
 
 class _Module {
   final String title;
