@@ -429,6 +429,26 @@ class StaffService {
     return data.cast<Map<String, dynamic>>();
   }
 
+  /// Public: identify who a fingerprint scan belongs to (matcher 1:N, no auth).
+  Future<ClockStatus> clockIdentifyScan(String sample) async {
+    final data = await _api.post(
+      '/api/v1/clock/identify-scan',
+      {'sample': sample},
+      auth: false,
+    ) as Map<String, dynamic>;
+    return ClockStatus.fromJson(data);
+  }
+
+  /// Public: identify a scan and record the next in/out punch (no auth).
+  Future<PunchResult> clockPunchScan(String sample, {String? note}) async {
+    final data = await _api.post(
+      '/api/v1/clock/punch-scan',
+      {'sample': sample, 'note': note},
+      auth: false,
+    ) as Map<String, dynamic>;
+    return PunchResult.fromJson(data);
+  }
+
   /// Public: resolve a scan to an employee + their clock status (no auth).
   Future<ClockStatus> clockIdentify({String? template, int? employeeId}) async {
     final data = await _api.post(

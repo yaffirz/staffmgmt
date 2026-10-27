@@ -16,9 +16,12 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlmodel import Session, select
 
+import json
+
 from app.api.deps import get_current_user, require_roles
 from app.api.routes.employees import _effective_brand_id
 from app.api.routes.non_oracle import employee_is_non_oracle
+from app.core import matcher
 from app.core.app_settings import get_bool
 from app.core.config import settings as app_config
 from app.core.database import get_session
@@ -307,6 +310,65 @@ def punch(payload: PunchRequest, session: Session = Depends(get_session)):
     )
     source = "kiosk" if payload.template else "dev"
     ev = _record(session, emp, source, note=payload.note)
+    return PunchResult(event=_event_read(ev, emp), status=_status(session, emp))
+
+
+# ---- Kiosk fingerprint scan → identify (1:N via the matcher) ----
+
+class ScanRequest(BaseModel):
+    sample: str  # a freshly captured PNG (base64) — the probe
+    note: Optional[str] = None
+
+
+def _identify_by_scan(session: Session, tenant: int, sample: str) -> Employees:
+    """Match a captured scan against ALL enrolled non-Oracle fingerprints and
+    return the employee it belongs to, or 404 if no confident match."""
+    if not (sample or "").strip():
+        raise HTTPException(status_code=422, detail="A scan is required.")
+    candidates: list[str] = []
+    emp_by_candidate: list[int] = []
+    for fp in session.exec(
+        select(Fingerprints).where(Fingerprints.tenant_id == tenant)
+    ).all():
+        try:
+            parsed = json.loads(fp.template)
+        except (ValueError, TypeError):
+            continue  # dev placeholder
+        if not isinstance(parsed, dict):
+            continue
+        for s in parsed.get("samples", []) or []:
+            if isinstance(s, str) and s:
+                candidates.append(s)
+                emp_by_candidate.append(fp.employee_id)
+    if not candidates:
+        raise HTTPException(status_code=404, detail="No fingerprints are enrolled yet.")
+    try:
+        res = matcher.verify(sample, candidates)
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=502, detail=f"Matcher unavailable: {exc}") from exc
+    best = res.get("bestIndex", -1)
+    if not res.get("match") or not (isinstance(best, int) and 0 <= best < len(emp_by_candidate)):
+        raise HTTPException(status_code=404, detail="Fingerprint not recognised.")
+    emp = session.get(Employees, emp_by_candidate[best])
+    if emp is None or emp.tenant_id != tenant or not employee_is_non_oracle(session, emp):
+        raise HTTPException(status_code=404, detail="Fingerprint not recognised.")
+    return emp
+
+
+@router.post("/identify-scan", response_model=EmployeeStatus)
+def identify_scan(payload: ScanRequest, session: Session = Depends(get_session)):
+    """Public: identify who a fingerprint scan belongs to (no punch yet)."""
+    _require_enabled(session)
+    emp = _identify_by_scan(session, _tenant(), payload.sample)
+    return _status(session, emp)
+
+
+@router.post("/punch-scan", response_model=PunchResult)
+def punch_scan(payload: ScanRequest, session: Session = Depends(get_session)):
+    """Public: identify a fingerprint scan and record the next in/out punch."""
+    _require_enabled(session)
+    emp = _identify_by_scan(session, _tenant(), payload.sample)
+    ev = _record(session, emp, "kiosk", note=payload.note)
     return PunchResult(event=_event_read(ev, emp), status=_status(session, emp))
 
 

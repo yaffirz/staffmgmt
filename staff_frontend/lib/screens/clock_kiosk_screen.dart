@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 
 import '../models/clock.dart';
 import '../services/api_client.dart';
+import '../services/dp_fingerprint.dart';
 import '../services/staff_service.dart';
 
 /// Kiosk clock-in station (no login). Identity comes from a fingerprint scan;
@@ -28,7 +29,9 @@ class _ClockKioskScreenState extends State<ClockKioskScreen> {
 
   // Current selection + flow state.
   ClockStatus? _status;
+  String? _pendingSample; // the scan that identified _status (null = dev pick)
   bool _busy = false;
+  bool _scanning = false;
   String? _error;
   PunchResult? _confirmed; // shows a confirmation then auto-resets
   Timer? _resetTimer;
@@ -93,6 +96,37 @@ class _ClockKioskScreenState extends State<ClockKioskScreen> {
     }
   }
 
+  /// Capture a real fingerprint and identify who it is (matcher 1:N).
+  Future<void> _scanIdentify() async {
+    setState(() {
+      _scanning = true;
+      _error = null;
+    });
+    try {
+      final samples = await captureFingerprintSamples(timeoutMs: 20000);
+      if (!mounted) return;
+      if (samples.isEmpty) {
+        setState(() => _error = 'No fingerprint captured. Try again.');
+        return;
+      }
+      final status =
+          await context.read<StaffService>().clockIdentifyScan(samples.first);
+      if (!mounted) return;
+      setState(() {
+        _status = status;
+        _pendingSample = samples.first;
+      });
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() => _error = e.message); // e.g. "Fingerprint not recognised."
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
+    } finally {
+      if (mounted) setState(() => _scanning = false);
+    }
+  }
+
   Future<void> _punch() async {
     final s = _status;
     if (s == null) return;
@@ -101,10 +135,12 @@ class _ClockKioskScreenState extends State<ClockKioskScreen> {
       _error = null;
     });
     try {
-      // Dev kiosk punches by employee id; the real SDK path would pass a template.
-      final res = await context
-          .read<StaffService>()
-          .clockPunch(employeeId: s.employeeId);
+      // A fingerprint-identified punch re-matches the same scan (secure); a dev
+      // pick punches by employee id.
+      final svc = context.read<StaffService>();
+      final res = _pendingSample != null
+          ? await svc.clockPunchScan(_pendingSample!)
+          : await svc.clockPunch(employeeId: s.employeeId);
       if (!mounted) return;
       setState(() {
         _confirmed = res;
@@ -129,6 +165,7 @@ class _ClockKioskScreenState extends State<ClockKioskScreen> {
     _resetTimer?.cancel();
     setState(() {
       _status = null;
+      _pendingSample = null;
       _confirmed = null;
       _error = null;
       _query = '';
@@ -201,19 +238,56 @@ class _ClockKioskScreenState extends State<ClockKioskScreen> {
 
   Widget _scanPrompt(ColorScheme cs) {
     final dev = _config!.devMode;
+    final hasReader = fingerprintReaderAvailable;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         const SizedBox(height: 8),
-        Icon(Icons.fingerprint, size: 96, color: cs.primary),
+        // Big tappable fingerprint = scan.
+        Center(
+          child: InkWell(
+            onTap: (_scanning || !hasReader) ? null : _scanIdentify,
+            borderRadius: BorderRadius.circular(100),
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: _scanning
+                  ? const SizedBox(
+                      width: 96,
+                      height: 96,
+                      child: CircularProgressIndicator(strokeWidth: 5))
+                  : Icon(Icons.fingerprint, size: 96, color: cs.primary),
+            ),
+          ),
+        ),
         const SizedBox(height: 12),
-        const Text('Place your finger on the reader',
+        Text(
+            _scanning
+                ? 'Place your finger on the reader…'
+                : hasReader
+                    ? 'Tap the fingerprint, then scan'
+                    : 'Fingerprint reader not detected',
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
         const SizedBox(height: 6),
         Text('to clock in or out',
             textAlign: TextAlign.center,
             style: TextStyle(color: cs.onSurfaceVariant)),
+        if (hasReader && !_scanning) ...[
+          const SizedBox(height: 16),
+          Center(
+            child: FilledButton.icon(
+              onPressed: _scanIdentify,
+              icon: const Icon(Icons.fingerprint),
+              label: const Text('Scan fingerprint'),
+              style: FilledButton.styleFrom(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
+                textStyle: const TextStyle(
+                    fontSize: 18, fontWeight: FontWeight.w700),
+              ),
+            ),
+          ),
+        ],
         if (_error != null) ...[
           const SizedBox(height: 16),
           Text(_error!,
