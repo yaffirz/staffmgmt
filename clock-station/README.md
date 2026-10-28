@@ -24,6 +24,13 @@ HID's installers can't be bundled here. Download them once and drop them in the
 If the PC already has both, you can skip the folder and pass `-SkipHid`.
 
 ## Install (on each station PC)
+
+**Easiest — the single .exe:** run **`ClockInStationSetup.exe`** (built from
+`ClockInStation.iss`, see below). The wizard asks for the station URL, offers an
+"auto-start at sign-in" option, installs any HID installers bundled with it, and
+sets up the full-screen kiosk launcher + Desktop shortcut.
+
+**Or the folder + script:**
 1. Copy this `clock-station\` folder to the PC.
 2. Put the two HID installers in `clock-station\vendor\` (or skip if already installed).
 3. Double-click **`Install-ClockStation.bat`** (it will ask for admin rights).
@@ -32,8 +39,20 @@ If the PC already has both, you can skip the folder and pass `-SkipHid`.
      ```
      .\Install-ClockStation.ps1 -Url "https://YOUR-PORTAL/?kiosk=1" -AutoStart
      ```
-4. Plug in the reader. Launch from the **Clock-in Station** desktop shortcut.
-   Staff scan a finger to clock in/out; press **Alt+F4** to exit the kiosk.
+
+Then plug in the reader and launch from the **Clock-in Station** desktop shortcut.
+Staff scan a finger to clock in/out; press **Alt+F4** to exit the kiosk.
+
+## Build the single .exe
+Needs **Inno Setup 6** (https://jrsoftware.org/isdl.php, or
+`winget install -e --id JRSoftware.InnoSetup`). Optionally drop the HID installers
+in `vendor\` first to bundle them into the .exe.
+
+```
+build.bat
+```
+
+Output: `dist\ClockInStationSetup.exe`. (`ClockInStation.iss` is the Inno script.)
 
 ## How it works
 - The kiosk URL is the normal app with `?kiosk=1`, which skips login and goes

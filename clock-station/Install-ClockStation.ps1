@@ -33,7 +33,8 @@ param(
     [string]$Url = "https://gbgstaff.atmix.io/?kiosk=1",
     [string]$VendorDir = (Join-Path $PSScriptRoot "vendor"),
     [switch]$AutoStart,
-    [switch]$SkipHid
+    [switch]$SkipHid,
+    [switch]$NoPause
 )
 
 $ErrorActionPreference = "Stop"
@@ -48,9 +49,10 @@ $isAdmin = ([Security.Principal.WindowsPrincipal] `
 ).IsInRole([Security.Principal.WindowsBuiltinRole]::Administrator)
 if (-not $isAdmin) {
     Write-Host "Requesting administrator rights..." -ForegroundColor Yellow
-    $argList = @("-ExecutionPolicy","Bypass","-File","`"$PSCommandPath`"","-Url","`"$Url`"")
+    $argList = @("-ExecutionPolicy","Bypass","-File","`"$PSCommandPath`"","-Url","`"$Url`"","-VendorDir","`"$VendorDir`"")
     if ($AutoStart) { $argList += "-AutoStart" }
     if ($SkipHid)   { $argList += "-SkipHid" }
+    if ($NoPause)   { $argList += "-NoPause" }
     Start-Process powershell.exe -Verb RunAs -ArgumentList $argList
     return
 }
@@ -130,14 +132,14 @@ function Resolve-Browser {
 $browser = Resolve-Browser
 if (-not $browser) { throw "Neither Microsoft Edge nor Google Chrome was found. Install one, then re-run." }
 
-# A dedicated browser profile keeps the kiosk clean and separate.
-$profileDir = Join-Path $env:LOCALAPPDATA "ClockStation\browser"
-New-Item -ItemType Directory -Force -Path $profileDir | Out-Null
+# A dedicated browser profile keeps the kiosk clean and separate. Use the cmd-time
+# %LOCALAPPDATA% so it resolves to whichever user actually launches the station.
+$profileArg = '%LOCALAPPDATA%\ClockStation\browser'
 
 if ($browser.Kind -eq "edge") {
-    $browserArgs = "--kiosk `"$Url`" --edge-kiosk-type=fullscreen --no-first-run --disable-features=TranslateUI --user-data-dir=`"$profileDir`""
+    $browserArgs = "--kiosk `"$Url`" --edge-kiosk-type=fullscreen --no-first-run --disable-features=TranslateUI --user-data-dir=`"$profileArg`""
 } else {
-    $browserArgs = "--kiosk `"$Url`" --no-first-run --disable-translate --user-data-dir=`"$profileDir`""
+    $browserArgs = "--kiosk `"$Url`" --no-first-run --disable-translate --user-data-dir=`"$profileArg`""
 }
 
 $launcher = Join-Path $PSScriptRoot "Launch-ClockStation.cmd"
@@ -183,4 +185,4 @@ if ($agent) {
 Write-Host "Launch the station from the Desktop shortcut 'Clock-in Station', or run:"
 Write-Host "    `"$launcher`""
 Write-Host "In the browser kiosk, press Alt+F4 to exit.`n"
-Read-Host "Press Enter to close"
+if (-not $NoPause) { Read-Host "Press Enter to close" }

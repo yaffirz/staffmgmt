@@ -36,3 +36,6 @@ Thumbs.db
 
 # Published Android APK (build artifact — not committed)
 /public/
+
+# Clock-in station installer build output
+clock-station/dist/
