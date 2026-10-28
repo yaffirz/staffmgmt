@@ -7,6 +7,7 @@ import '../state/maintenance_provider.dart';
 import '../state/server_provider.dart';
 import '../widgets/app_scaffold.dart';
 import 'authenticated_home.dart';
+import 'clock_kiosk_screen.dart';
 import 'force_password_change_screen.dart';
 import 'login_screen.dart';
 import 'maintenance_screen.dart';
@@ -37,9 +38,18 @@ class _RootGateState extends State<RootGate> {
   // startup. While set, the reset screen takes over (unauthenticated).
   String? _resetToken = _initialResetToken();
 
+  // Kiosk mode (`/?kiosk=1`) — a clock-in station PC launches straight into the
+  // no-login scan kiosk, bypassing login entirely. Captured once at startup.
+  final bool _kiosk = _initialKiosk();
+
   static String? _initialResetToken() {
     final t = Uri.base.queryParameters['reset_token'];
     return (t != null && t.isNotEmpty) ? t : null;
+  }
+
+  static bool _initialKiosk() {
+    final k = Uri.base.queryParameters['kiosk'];
+    return k == '1' || k == 'true';
   }
 
   @override
@@ -53,6 +63,11 @@ class _RootGateState extends State<RootGate> {
       // Reset so reconfiguring the server re-runs auto-login afterwards.
       _autoLoginStarted = false;
       return const ServerSetupScreen();
+    }
+
+    // Clock-in station: go straight to the no-login scan kiosk.
+    if (_kiosk) {
+      return const ClockKioskScreen();
     }
 
     // A password-reset link takes precedence over the normal login flow. The

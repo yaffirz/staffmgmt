@@ -299,7 +299,26 @@ Owner: Arif Asad Ali.
   (changelog 0082, 0083).
 - **Clock-in entry points (done):** the kiosk opens from the login screen's
   "Clock-in station" link AND a **Clock-in Station** dashboard tile; managers also
-  get **Clock In Staff** and **Attendance Register** tiles (changelog 0083).
+  get **Clock In Staff** and **Attendance Register** tiles (changelog 0083). The
+  kiosk also has a **direct URL `/?kiosk=1`** (intercepted in `RootGate`) that
+  bypasses login for station PCs (changelog 0086).
+- **Kiosk fingerprint scan → identify (done):** the kiosk's **Scan fingerprint**
+  button captures a print and matches it **1:N** against all enrolled Non-Oracle
+  fingerprints via the matcher to identify the employee, then clocks them in/out.
+  Public `POST /clock/identify-scan` + `/clock/punch-scan` (identity always from
+  the scan, never a client id); `core/matcher.py` shared client. Dev picker stays
+  under `clock_dev_mode` (changelog 0084).
+- **Hide clock-in staff + store clock dashboard (done):** `EmployeeRead.clock_in_only`
+  (true = Non-Oracle staffer whose brands are ALL non-Oracle; false if they also
+  belong to a regular brand). The All-employees list hides `clock_in_only` staff by
+  default with an app-bar toggle. **Store/Foodmall** accounts now get only the three
+  clock tiles (no employee list). Also stripped a stray NUL byte in
+  `employees_list_screen.dart` (changelog 0085).
+- **Clock-in station installer (done):** `clock-station/` — a Windows installer
+  (`Install-ClockStation.ps1`/`.bat`) that installs the HID driver + Authentication
+  Device Client (from `vendor\`, not redistributed) and creates a full-screen kiosk
+  launcher (Edge/Chrome `--kiosk` at `/?kiosk=1`) + Desktop/Startup shortcut. See
+  `clock-station/README.md` (changelog 0086).
 
 ## Known bugs fixed (Aug 2026)
 - **Recurring "replace child rows" 500s.** A helper that *deletes all child rows
