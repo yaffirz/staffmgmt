@@ -82,6 +82,18 @@ class DashBrand {
       );
 }
 
+/// An Area Manager account (admin "view as area manager" picker).
+class DashAreaManager {
+  final int userId;
+  final String username;
+  const DashAreaManager({required this.userId, required this.username});
+
+  factory DashAreaManager.fromJson(Map<String, dynamic> j) => DashAreaManager(
+        userId: j['user_id'] as int,
+        username: j['username'] as String,
+      );
+}
+
 class AreaDashboard {
   final List<DashBrand> brands;
   final int? brandId;
@@ -89,6 +101,8 @@ class AreaDashboard {
   final List<DashStore> stores;
   final List<Platform> platformCatalog;
   final bool canEdit;
+  final List<DashAreaManager> areaManagers;
+  final int? areaManagerId;
   const AreaDashboard({
     this.brands = const [],
     this.brandId,
@@ -96,6 +110,8 @@ class AreaDashboard {
     this.stores = const [],
     this.platformCatalog = const [],
     this.canEdit = false,
+    this.areaManagers = const [],
+    this.areaManagerId,
   });
 
   factory AreaDashboard.fromJson(Map<String, dynamic> j) => AreaDashboard(
@@ -111,6 +127,10 @@ class AreaDashboard {
             .map((e) => Platform.fromJson(e as Map<String, dynamic>))
             .toList(),
         canEdit: (j['can_edit'] as bool?) ?? false,
+        areaManagers: ((j['area_managers'] as List?) ?? const [])
+            .map((e) => DashAreaManager.fromJson(e as Map<String, dynamic>))
+            .toList(),
+        areaManagerId: j['area_manager_id'] as int?,
       );
 
   int get totalStaff => stores.fold(0, (sum, s) => sum + s.staff.length);

@@ -392,10 +392,14 @@ class StaffService {
 
   // ---- External platforms + Area dashboard ----
 
-  Future<AreaDashboard> areaDashboard({int? brandId}) async {
-    final q = brandId == null
+  Future<AreaDashboard> areaDashboard({int? brandId, int? areaManagerId}) async {
+    final params = <String>[
+      if (brandId != null) 'brand_id=$brandId',
+      if (areaManagerId != null) 'area_manager_id=$areaManagerId',
+    ];
+    final q = params.isEmpty
         ? '/api/v1/area-dashboard'
-        : '/api/v1/area-dashboard?brand_id=$brandId';
+        : '/api/v1/area-dashboard?${params.join('&')}';
     final data = await _api.get(q) as Map<String, dynamic>;
     return AreaDashboard.fromJson(data);
   }

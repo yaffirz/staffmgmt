@@ -15,7 +15,14 @@ from sqlmodel import Session, select
 
 from app.api.deps import require_roles
 from app.core.database import get_session
-from app.core.scoping import dashboard_scope, effective_brand_id, stores_in_brands
+from app.core.scoping import (
+    am_cluster_store_ids,
+    brands_of_stores,
+    dashboard_scope,
+    effective_brand_id,
+    is_admin_scope,
+    stores_in_brands,
+)
 from app.models.models import (
     Brands,
     EmployeeAdditionalStores,
@@ -24,6 +31,8 @@ from app.models.models import (
     ExternalPlatforms,
     Positions,
     Stores,
+    UserRoles,
+    Users,
 )
 from app.schemas.auth import CurrentUser
 
@@ -93,6 +102,11 @@ class DashBrand(BaseModel):
     brand_name: str
 
 
+class AmLite(BaseModel):
+    user_id: int
+    username: str
+
+
 class Dashboard(BaseModel):
     brands: list[DashBrand]
     brand_id: Optional[int] = None
@@ -100,9 +114,42 @@ class Dashboard(BaseModel):
     stores: list[DashStore]
     platform_catalog: list[PlatformRead]
     can_edit: bool
+    # Admin-only: the Area Managers an admin can view the dashboard "as".
+    # Empty for Area/Ops Managers (they only ever see their own scope).
+    area_managers: list[AmLite] = []
+    area_manager_id: Optional[int] = None
 
 
 # ---------- helpers ----------
+def _list_area_managers(session: Session, tenant: int) -> list[AmLite]:
+    """Every account whose effective role is Area Manager (primary or additional),
+    for the admin 'view as area manager' picker."""
+    users: dict[int, str] = {}
+    for u in session.exec(
+        select(Users).where(
+            Users.tenant_id == tenant, Users.role == "Area Manager"
+        )
+    ).all():
+        users[u.user_id] = u.username
+    extra_ids = {
+        r.user_id
+        for r in session.exec(
+            select(UserRoles).where(UserRoles.role == "Area Manager")
+        ).all()
+    }
+    if extra_ids:
+        for u in session.exec(
+            select(Users).where(
+                Users.tenant_id == tenant, Users.user_id.in_(extra_ids)
+            )
+        ).all():
+            users[u.user_id] = u.username
+    return [
+        AmLite(user_id=uid, username=un)
+        for uid, un in sorted(users.items(), key=lambda kv: kv[1].lower())
+    ]
+
+
 def _emp_platforms_map(session: Session, emp_ids: list[int]) -> dict[int, list[EmpPlatform]]:
     """Platform tags per employee, resolved with names/colours."""
     out: dict[int, list[EmpPlatform]] = {}
@@ -263,14 +310,26 @@ def set_employee_platforms(
 @router.get("/area-dashboard", response_model=Dashboard)
 def area_dashboard(
     brand_id: Optional[int] = None,
+    area_manager_id: Optional[int] = None,
     current: CurrentUser = Depends(require_roles(*MANAGE_ROLES)),
     session: Session = Depends(get_session),
 ):
     """An area's stores -> staff (positions) -> platform tags. Ops Managers are
     scoped to their brands, Area Managers to their store cluster; admin roles see
-    everything."""
+    everything. An admin may pass `area_manager_id` to view the dashboard AS that
+    Area Manager (scoped to their cluster)."""
     tenant = current.tenant_id
     scope_brands, scope_stores = dashboard_scope(session, current)  # None = all
+
+    # Admin "view as area manager": narrow to the chosen AM's cluster.
+    admin = is_admin_scope(current)
+    area_managers = _list_area_managers(session, tenant) if admin else []
+    viewing_am: Optional[int] = None
+    if admin and area_manager_id is not None:
+        if any(a.user_id == area_manager_id for a in area_managers):
+            viewing_am = area_manager_id
+            scope_stores = am_cluster_store_ids(session, area_manager_id, tenant)
+            scope_brands = brands_of_stores(session, scope_stores)
     all_brands = session.exec(
         select(Brands).where(Brands.tenant_id == tenant).order_by(Brands.brand_name)
     ).all()
@@ -352,4 +411,6 @@ def area_dashboard(
         stores=stores_out,
         platform_catalog=catalog,
         can_edit=True,
+        area_managers=area_managers,
+        area_manager_id=viewing_am,
     )

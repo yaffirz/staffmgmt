@@ -18,6 +18,7 @@ class AreaDashboardScreen extends StatefulWidget {
 class _AreaDashboardScreenState extends State<AreaDashboardScreen> {
   AreaDashboard? _dash;
   int? _brandId;
+  int? _areaManagerId; // admin: viewing AS this Area Manager
   bool _loading = true;
   String? _error;
   String _query = '';
@@ -34,11 +35,14 @@ class _AreaDashboardScreenState extends State<AreaDashboardScreen> {
       _error = null;
     });
     try {
-      final dash = await context.read<StaffService>().areaDashboard(brandId: _brandId);
+      final dash = await context
+          .read<StaffService>()
+          .areaDashboard(brandId: _brandId, areaManagerId: _areaManagerId);
       if (!mounted) return;
       setState(() {
         _dash = dash;
         _brandId = dash.brandId;
+        _areaManagerId = dash.areaManagerId;
         _loading = false;
       });
     } catch (_) {
@@ -120,24 +124,38 @@ class _AreaDashboardScreenState extends State<AreaDashboardScreen> {
   Widget _body() {
     final dash = _dash!;
     final cs = Theme.of(context).colorScheme;
-    if (dash.brands.isEmpty) {
+    // When there are no brands AND no admin AM picker to switch with, show the
+    // bare message (an AM/Ops Manager with nothing assigned).
+    if (dash.brands.isEmpty && dash.areaManagers.isEmpty) {
       return const Center(child: Text('No brands are assigned to your area.'));
     }
     return Column(
       children: [
         _controls(cs, dash),
         const Divider(height: 1),
-        Expanded(
-          child: dash.stores.isEmpty
-              ? Center(
-                  child: Text('No stores in ${dash.brandName ?? 'this brand'}.',
-                      style: TextStyle(color: cs.onSurfaceVariant)))
-              : ListView(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-                  children: [for (final s in dash.stores) _storeSection(cs, s)],
-                ),
-        ),
+        Expanded(child: _content(cs, dash)),
       ],
+    );
+  }
+
+  Widget _content(ColorScheme cs, AreaDashboard dash) {
+    if (dash.brands.isEmpty) {
+      // Admin viewing an AM (or "All") with nothing to show — keep the controls
+      // above so they can switch back.
+      final msg = dash.areaManagerId != null
+          ? 'This area manager has no stores assigned yet.'
+          : 'No brands to show.';
+      return Center(
+          child: Text(msg, style: TextStyle(color: cs.onSurfaceVariant)));
+    }
+    if (dash.stores.isEmpty) {
+      return Center(
+          child: Text('No stores in ${dash.brandName ?? 'this brand'}.',
+              style: TextStyle(color: cs.onSurfaceVariant)));
+    }
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+      children: [for (final s in dash.stores) _storeSection(cs, s)],
     );
   }
 
@@ -172,6 +190,39 @@ class _AreaDashboardScreenState extends State<AreaDashboardScreen> {
               },
             ),
           ),
+          // Admin-only: view the dashboard as a specific Area Manager (scoped to
+          // their cluster). Empty list for AM/Ops Managers, so it hides itself.
+          if (dash.areaManagers.isNotEmpty)
+            SizedBox(
+              width: 240,
+              child: DropdownButtonFormField<int?>(
+                initialValue: _areaManagerId,
+                isExpanded: true,
+                decoration: const InputDecoration(
+                  isDense: true,
+                  labelText: 'View as area manager',
+                  border: OutlineInputBorder(),
+                ),
+                items: [
+                  const DropdownMenuItem<int?>(
+                    value: null,
+                    child: Text('All area managers'),
+                  ),
+                  for (final am in dash.areaManagers)
+                    DropdownMenuItem<int?>(
+                      value: am.userId,
+                      child: Text(am.username, overflow: TextOverflow.ellipsis),
+                    ),
+                ],
+                onChanged: (v) {
+                  setState(() {
+                    _areaManagerId = v;
+                    _brandId = null; // let the AM's own brand default
+                  });
+                  _load();
+                },
+              ),
+            ),
           _stat(cs, Icons.store_mall_directory_outlined, '${dash.stores.length}',
               'stores'),
           _stat(cs, Icons.groups_outlined, '${dash.totalStaff}', 'staff'),
