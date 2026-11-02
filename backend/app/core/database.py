@@ -15,12 +15,13 @@ _MIGRATIONS = [
     "visibility_roles JSONB NOT NULL DEFAULT '[]'::jsonb",
     "ALTER TABLE staff_notes ADD COLUMN IF NOT EXISTS "
     "visibility_brand_ids JSONB NOT NULL DEFAULT '[]'::jsonb",
-    # Widen the users.role check to include 'IT' + store-level roles. Drop+recreate
-    # so it's idempotent (Postgres has no ADD CONSTRAINT IF NOT EXISTS).
+    # Widen the users.role check to include 'IT' + store-level roles + the
+    # 'Ops Manager' role. Drop+recreate so it's idempotent (Postgres has no ADD
+    # CONSTRAINT IF NOT EXISTS).
     "ALTER TABLE users DROP CONSTRAINT IF EXISTS ck_users_role",
     "ALTER TABLE users ADD CONSTRAINT ck_users_role "
-    "CHECK (role IN ('Super Admin', 'Admin', 'HR', 'Area Manager', 'IT', "
-    "'Store', 'Foodmall'))",
+    "CHECK (role IN ('Super Admin', 'Admin', 'HR', 'Ops Manager', "
+    "'Area Manager', 'IT', 'Store', 'Foodmall'))",
     # Employment status for termination/reactivation.
     "ALTER TABLE employees ADD COLUMN IF NOT EXISTS "
     "employment_status VARCHAR NOT NULL DEFAULT 'active'",

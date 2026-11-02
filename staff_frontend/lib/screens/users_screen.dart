@@ -13,6 +13,7 @@ const _roles = [
   'Super Admin',
   'Admin',
   'HR',
+  'Ops Manager',
   'Area Manager',
   'IT',
   'Store',

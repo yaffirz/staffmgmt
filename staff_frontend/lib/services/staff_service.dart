@@ -6,6 +6,7 @@ import '../models/backup_item.dart';
 import '../models/bulk_result.dart';
 import '../models/clock.dart';
 import '../models/cluster.dart';
+import '../models/cluster_admin.dart';
 import '../models/directory.dart';
 import '../models/employee.dart';
 import '../models/form_field_config.dart';
@@ -428,6 +429,33 @@ class StaffService {
     return data
         .map((e) => EmpPlatform.fromJson(e as Map<String, dynamic>))
         .toList();
+  }
+
+  // ---- Cluster administration (Admin / IT / HR) ----
+
+  Future<ClustersOverview> clustersOverview() async {
+    final data = await _api.get('/api/v1/clusters/overview') as Map<String, dynamic>;
+    return ClustersOverview.fromJson(data);
+  }
+
+  /// Replace an Area Manager's store cluster.
+  Future<AreaManagerRow> setAreaManagerStores(
+      int userId, List<int> storeIds) async {
+    final data = await _api.put(
+      '/api/v1/clusters/area-manager/$userId/stores',
+      {'store_ids': storeIds},
+    ) as Map<String, dynamic>;
+    return AreaManagerRow.fromJson(data);
+  }
+
+  /// Replace an Ops Manager's owned brands.
+  Future<OpsManagerRow> setOpsManagerBrands(
+      int userId, List<int> brandIds) async {
+    final data = await _api.put(
+      '/api/v1/clusters/ops-manager/$userId/brands',
+      {'brand_ids': brandIds},
+    ) as Map<String, dynamic>;
+    return OpsManagerRow.fromJson(data);
   }
 
   // ---- Attendance register ----

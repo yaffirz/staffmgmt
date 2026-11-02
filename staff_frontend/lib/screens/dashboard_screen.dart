@@ -15,6 +15,7 @@ import 'brands_stores_hub_screen.dart';
 import 'cross_store_screen.dart';
 import 'area_dashboard_screen.dart';
 import 'attendance_register_screen.dart';
+import 'clusters_screen.dart';
 import 'clock_kiosk_screen.dart';
 import 'clock_manager_screen.dart';
 import 'employees_hub_screen.dart';
@@ -114,6 +115,9 @@ void _open(BuildContext context, _Dest dest) {
     case _Dest.areaDashboard:
       screen = const AreaDashboardScreen();
       break;
+    case _Dest.clusters:
+      screen = const ClustersScreen();
+      break;
     case _Dest.none:
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('The bell (top right) now handles this.')),
@@ -198,10 +202,22 @@ class _DashboardBody extends StatelessWidget {
       if (seen.add(_clockModule.title)) out.add(_clockModule);
       if (seen.add(_attendanceModule.title)) out.add(_attendanceModule);
     }
-    // Area dashboard: Area Managers + back-office roles.
-    const areaRoles = {'Super Admin', 'Admin', 'IT', 'HR', 'Area Manager'};
+    // Area dashboard: Ops Managers + Area Managers + back-office roles.
+    const areaRoles = {
+      'Super Admin',
+      'Admin',
+      'IT',
+      'HR',
+      'Ops Manager',
+      'Area Manager',
+    };
     if (roles.any(areaRoles.contains) && seen.add(_areaDashModule.title)) {
       out.add(_areaDashModule);
+    }
+    // Clusters admin: who may assign AM stores / Ops brands.
+    const clusterRoles = {'Super Admin', 'Admin', 'IT', 'HR'};
+    if (roles.any(clusterRoles.contains) && seen.add(_clustersModule.title)) {
+      out.add(_clustersModule);
     }
     return out;
   }
@@ -291,12 +307,17 @@ enum _Dest {
   attendance,
   kiosk,
   areaDashboard,
+  clusters,
 }
 
 // Area dashboard (stores -> staff -> positions -> platform access), shared by
 // the roles that may view/edit it.
 const _Module _areaDashModule = _Module('Area Dashboard', Icons.dashboard_outlined,
     'Stores, staff & platform access', dest: _Dest.areaDashboard);
+
+// Cluster administration: assign AM store clusters + Ops Manager brands.
+const _Module _clustersModule = _Module('Clusters', Icons.account_tree_outlined,
+    'Assign stores & brands to managers', dest: _Dest.clusters);
 
 // Clock-in tiles, shared by the roles that may clock employees in/out.
 const _Module _clockModule = _Module('Clock In Staff', Icons.punch_clock_outlined,

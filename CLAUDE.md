@@ -51,10 +51,15 @@ Owner: Arif Asad Ali.
 - Foundations: auth/roles; employees CRUD (wizard, list, edit, delete, additional
   stores); configurable new-hire form; brands/stores/positions hub; bulk import;
   Users & Roles.
-- **Area Manager scoping is BRAND-based**: an AM covers one or more brands; their
-  cluster = all stores in those brands. A staffer shows under a store if it's their
-  primary OR an additional store. `area_manager_brands` holds AM↔brand links;
-  `area_manager_stores` is unused.
+- **Manager hierarchy**: Ops Manager (brands) > Area Manager (stores) > store
+  managers/supervisors > staff. **AM scoping is now STORE-based** (changelog 0089):
+  an AM owns a cluster of specific stores in `area_manager_stores`, resolved by
+  `core/scoping.dashboard_scope` / `am_cluster_store_ids`, which **falls back** to
+  "all stores in the legacy `area_manager_brands`" when no explicit stores are set
+  (so pre-0089 AMs keep working). An **Ops Manager** owns whole brands
+  (`ops_manager_brands`) and sees all stores in them. Admin/IT/HR set both in the
+  **Clusters** screen. A staffer shows under a store if it's their primary OR an
+  additional store.
 - **Phase 2 (done):** My Cluster view; Move (change primary store) + Request staff;
   Cross-store Assignments (add additional stores, accumulative); admin toggle
   "Area Managers can move staff".
@@ -331,6 +336,20 @@ Owner: Arif Asad Ali.
   their own brand cluster (`_am_brands`/`_assert_can_edit_employee`); back-office
   roles see all brands. Frontend `area_dashboard_screen.dart` + `models/platform.dart`.
   No toggle (role-gated view, not a toggleable feature) (changelog 0088).
+- **Ops Manager + store-level clusters + Clusters admin (done):** new **Ops
+  Manager** role (brand-scoped, above Area Manager) and AM clusters moved to
+  **store-level**. `core/scoping.py` centralises `dashboard_scope` (returns the
+  brand/store ids a caller may see; None=all for Super Admin/Admin/IT/HR); AM
+  store set = `area_manager_stores` with legacy `area_manager_brands` fallback.
+  Ops brands in `ops_manager_brands`. The Area Dashboard + My Cluster both read
+  it (My Cluster via `cluster.py:_am_scope`); foodmall staff are filtered to the
+  selected brand (`effective_brand_id`). New **Clusters** screen (Admin/IT/HR
+  tile) sets AM stores + Ops brands — `routes/clusters.py`
+  (`GET /clusters/overview`, `PUT /clusters/area-manager/{id}/stores`,
+  `PUT /clusters/ops-manager/{id}/brands`). Frontend `clusters_screen.dart` +
+  `models/cluster_admin.dart`; `Ops Manager` added to the role dropdown. New
+  staff auto-populate (dashboards query live by store). No toggle (role-gated)
+  (changelog 0089).
 
 ## Known bugs fixed (Aug 2026)
 - **Recurring "replace child rows" 500s.** A helper that *deletes all child rows
@@ -361,7 +380,7 @@ change was verified before commit — backend flows end-to-end against the runni
 API, frontend via `flutter analyze` + `flutter build web`, and the key flows
 (suspension live cut-off, forced password change, employee filters, IT store
 access, username/email login) confirmed in-browser. One changelog file per commit
-(standing rule #1); highest number = newest (currently **0088**).
+(standing rule #1); highest number = newest (currently **0089**).
 
 ## Next planned work
 - (No committed backlog.) Candidate follow-ups: hide/filter terminated staff from

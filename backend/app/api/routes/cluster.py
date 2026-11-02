@@ -9,8 +9,8 @@ from sqlmodel import Session, select
 from app.api.deps import require_roles
 from app.core.app_settings import get_bool
 from app.core.database import get_session
+from app.core.scoping import am_cluster_store_ids, brands_of_stores
 from app.models.models import (
-    AreaManagerBrands,
     AreaManagers,
     AuditLogs,
     Brands,
@@ -54,7 +54,13 @@ def _position_rank(title: str | None) -> int:
 
 def _am_scope(current: CurrentUser, session: Session):
     """Resolve the calling AM's manager row, brand ids, and in-scope store ids.
-    Raises 403 if the user has no area-manager profile."""
+    Raises 403 if the user has no area-manager profile.
+
+    The cluster is store-level (`area_manager_stores`), falling back to the
+    legacy brand links when no explicit stores are set — see
+    `app.core.scoping.am_cluster_store_ids`. Brand ids are derived from the
+    resulting stores so display grouping stays correct.
+    """
     manager = session.exec(
         select(AreaManagers).where(AreaManagers.user_id == current.user_id)
     ).first()
@@ -63,25 +69,8 @@ def _am_scope(current: CurrentUser, session: Session):
             status_code=status.HTTP_403_FORBIDDEN,
             detail="No area-manager profile is linked to this account.",
         )
-    brand_ids = {
-        link.brand_id
-        for link in session.exec(
-            select(AreaManagerBrands).where(
-                AreaManagerBrands.manager_id == manager.manager_id
-            )
-        ).all()
-    }
-    store_ids: set[int] = set()
-    if brand_ids:
-        store_ids = {
-            s.store_id
-            for s in session.exec(
-                select(Stores).where(
-                    Stores.tenant_id == current.tenant_id,
-                    Stores.brand_id.in_(brand_ids),
-                )
-            ).all()
-        }
+    store_ids = am_cluster_store_ids(session, current.user_id, current.tenant_id)
+    brand_ids = brands_of_stores(session, store_ids)
     return manager, brand_ids, store_ids
 
 

@@ -15,9 +15,8 @@ from sqlmodel import Session, select
 
 from app.api.deps import require_roles
 from app.core.database import get_session
+from app.core.scoping import dashboard_scope, effective_brand_id
 from app.models.models import (
-    AreaManagerBrands,
-    AreaManagers,
     Brands,
     EmployeeAdditionalStores,
     EmployeePlatforms,
@@ -30,8 +29,16 @@ from app.schemas.auth import CurrentUser
 
 router = APIRouter(prefix="/api/v1", tags=["platforms"])
 
-MANAGE_ROLES = ("Super Admin", "Admin", "IT", "HR", "Area Manager")
-_ADMIN_ROLES = {"Super Admin", "Admin", "IT", "HR"}
+# Who may view/edit the dashboard. Ops Managers + Area Managers are scoped to
+# their own brands/cluster by `dashboard_scope`; the admin roles see all.
+MANAGE_ROLES = (
+    "Super Admin",
+    "Admin",
+    "IT",
+    "HR",
+    "Ops Manager",
+    "Area Manager",
+)
 
 
 # ---------- schemas ----------
@@ -96,25 +103,6 @@ class Dashboard(BaseModel):
 
 
 # ---------- helpers ----------
-def _am_brands(session: Session, current: CurrentUser) -> Optional[set[int]]:
-    """Brand ids an Area Manager covers, or None for admin roles (all brands)."""
-    if _ADMIN_ROLES & set(current.roles or [current.role]):
-        return None
-    mgr = session.exec(
-        select(AreaManagers).where(AreaManagers.user_id == current.user_id)
-    ).first()
-    if mgr is None:
-        return set()
-    return {
-        link.brand_id
-        for link in session.exec(
-            select(AreaManagerBrands).where(
-                AreaManagerBrands.manager_id == mgr.manager_id
-            )
-        ).all()
-    }
-
-
 def _emp_platforms_map(session: Session, emp_ids: list[int]) -> dict[int, list[EmpPlatform]]:
     """Platform tags per employee, resolved with names/colours."""
     out: dict[int, list[EmpPlatform]] = {}
@@ -215,19 +203,11 @@ def delete_platform(
 
 # ---------- per-employee access ----------
 def _assert_can_edit_employee(session: Session, current: CurrentUser, emp: Employees) -> None:
-    brands = _am_brands(session, current)
-    if brands is None:
+    _brands, store_ids = dashboard_scope(session, current)
+    if store_ids is None:
         return  # admin roles may edit anyone
-    # Area Manager: the employee must be in one of their brands' stores (primary
+    # Ops / Area Manager: the employee must be in one of their stores (primary
     # or additional).
-    store_ids = {
-        s.store_id
-        for s in session.exec(
-            select(Stores).where(
-                Stores.tenant_id == current.tenant_id, Stores.brand_id.in_(brands or {-1})
-            )
-        ).all()
-    }
     if emp.primary_store_id in store_ids:
         return
     extra = session.exec(
@@ -286,15 +266,16 @@ def area_dashboard(
     current: CurrentUser = Depends(require_roles(*MANAGE_ROLES)),
     session: Session = Depends(get_session),
 ):
-    """An area's stores -> staff (positions) -> platform tags. AMs are scoped to
-    their brands; admin roles pick any brand."""
+    """An area's stores -> staff (positions) -> platform tags. Ops Managers are
+    scoped to their brands, Area Managers to their store cluster; admin roles see
+    everything."""
     tenant = current.tenant_id
-    am_brands = _am_brands(session, current)  # None = all (admin)
+    scope_brands, scope_stores = dashboard_scope(session, current)  # None = all
     all_brands = session.exec(
         select(Brands).where(Brands.tenant_id == tenant).order_by(Brands.brand_name)
     ).all()
     visible = [
-        b for b in all_brands if am_brands is None or b.brand_id in am_brands
+        b for b in all_brands if scope_brands is None or b.brand_id in scope_brands
     ]
     brands_out = [DashBrand(brand_id=b.brand_id, brand_name=b.brand_name) for b in visible]
 
@@ -311,6 +292,10 @@ def area_dashboard(
             .where(Stores.tenant_id == tenant, Stores.brand_id == selected.brand_id)
             .order_by(Stores.store_name)
         ).all()
+        # Area Managers only see their own cluster's stores within the brand.
+        if scope_stores is not None:
+            stores = [s for s in stores if s.store_id in scope_stores]
+        store_by_id = {s.store_id: s for s in stores}
         positions = {
             p.position_id: p.position_title
             for p in session.exec(select(Positions).where(Positions.tenant_id == tenant)).all()
@@ -327,6 +312,11 @@ def area_dashboard(
                 )
                 .order_by(Employees.employee_name)
             ).all():
+                # In a multi-brand foodmall, only count staff who belong to the
+                # selected brand (explicit brand_id, else the store's brand).
+                store = store_by_id.get(e.primary_store_id)
+                if effective_brand_id(e, store) != selected.brand_id:
+                    continue
                 emp_by_store.setdefault(e.primary_store_id, []).append(e)
         all_emp_ids = [e.employee_id for lst in emp_by_store.values() for e in lst]
         plat = _emp_platforms_map(session, all_emp_ids)

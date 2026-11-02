@@ -15,6 +15,7 @@ from app.api.routes import (
     backups,
     clock,
     cluster,
+    clusters,
     email_admin,
     employees,
     fingerprints,
@@ -93,6 +94,7 @@ app.include_router(fingerprints.router)
 app.include_router(clock.router)
 app.include_router(attendance.router)
 app.include_router(platforms.router)
+app.include_router(clusters.router)
 
 
 @app.get("/health", tags=["meta"])

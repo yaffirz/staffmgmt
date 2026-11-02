@@ -9,6 +9,7 @@ ALLOWED_ROLES = (
     "Super Admin",
     "Admin",
     "HR",
+    "Ops Manager",
     "Area Manager",
     "IT",
     "Store",
@@ -127,8 +128,8 @@ class Users(SQLModel, table=True):
         UniqueConstraint("tenant_id", "username", name="uq_users_tenant_username"),
         UniqueConstraint("tenant_id", "email", name="uq_users_tenant_email"),
         CheckConstraint(
-            "role IN ('Super Admin', 'Admin', 'HR', 'Area Manager', 'IT', "
-            "'Store', 'Foodmall')",
+            "role IN ('Super Admin', 'Admin', 'HR', 'Ops Manager', "
+            "'Area Manager', 'IT', 'Store', 'Foodmall')",
             name="ck_users_role",
         ),
     )
@@ -192,6 +193,22 @@ class AreaManagerStores(SQLModel, table=True):
     ams_id: Optional[int] = Field(default=None, primary_key=True)
     manager_id: int = Field(foreign_key="area_managers.manager_id")
     store_id: int = Field(foreign_key="stores.store_id")
+
+
+class OpsManagerBrands(SQLModel, table=True):
+    """Which brands an Operations Manager owns. Ops Managers sit ABOVE Area
+    Managers (Ops Manager > Area Manager > store managers > staff): they see
+    everything an AM sees but across the whole of their brand(s). Keyed directly
+    on the user (no manager-row indirection), so one user can own many brands."""
+
+    __tablename__ = "ops_manager_brands"
+    __table_args__ = (
+        UniqueConstraint("user_id", "brand_id", name="uq_omb_user_brand"),
+    )
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: int = Field(foreign_key="users.user_id", index=True)
+    brand_id: int = Field(foreign_key="brands.brand_id", index=True)
 
 
 class Employees(SQLModel, table=True):
