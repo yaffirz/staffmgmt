@@ -12,6 +12,7 @@ import '../models/form_field_config.dart';
 import '../models/maintenance_status.dart';
 import '../models/marketing_content.dart';
 import '../models/non_oracle_brand.dart';
+import '../models/platform.dart';
 import '../models/registration_request.dart';
 import '../models/staff_note.dart';
 import '../models/store_summary.dart';
@@ -386,6 +387,47 @@ class StaffService {
       {'override': override},
     ) as Map<String, dynamic>;
     return Employee.fromJson(data);
+  }
+
+  // ---- External platforms + Area dashboard ----
+
+  Future<AreaDashboard> areaDashboard({int? brandId}) async {
+    final q = brandId == null
+        ? '/api/v1/area-dashboard'
+        : '/api/v1/area-dashboard?brand_id=$brandId';
+    final data = await _api.get(q) as Map<String, dynamic>;
+    return AreaDashboard.fromJson(data);
+  }
+
+  Future<List<Platform>> platforms() async {
+    final data = await _api.get('/api/v1/platforms') as List;
+    return data
+        .map((e) => Platform.fromJson(e as Map<String, dynamic>))
+        .toList(growable: false);
+  }
+
+  Future<Platform> createPlatform(String name, {String? color}) async {
+    final data = await _api.post('/api/v1/platforms', {
+      'name': name,
+      'color': color,
+    }) as Map<String, dynamic>;
+    return Platform.fromJson(data);
+  }
+
+  Future<void> deletePlatform(int platformId) async {
+    await _api.delete('/api/v1/platforms/$platformId');
+  }
+
+  /// Replace an employee's platform tags. `items` = [{platform_id, note?}].
+  Future<List<EmpPlatform>> setEmployeePlatforms(
+      int employeeId, List<Map<String, dynamic>> items) async {
+    final data = await _api.put(
+      '/api/v1/employees/$employeeId/platforms',
+      {'items': items},
+    ) as List;
+    return data
+        .map((e) => EmpPlatform.fromJson(e as Map<String, dynamic>))
+        .toList();
   }
 
   // ---- Attendance register ----

@@ -319,6 +319,18 @@ Owner: Arif Asad Ali.
   Device Client (from `vendor\`, not redistributed) and creates a full-screen kiosk
   launcher (Edge/Chrome `--kiosk` at `/?kiosk=1`) + Desktop/Startup shortcut. See
   `clock-station/README.md` (changelog 0086).
+- **Area Manager dashboard + external-platform access (done):** an **Area
+  Dashboard** tile (Super Admin/Admin/IT/HR/Area Manager) showing a brand's
+  stores → active staff → position, with each staffer's **external/3rd-party
+  platform** access (e.g. Taqtics, Oracle) as a coloured tag. Access is
+  per-employee **has-access + optional note** (username/access level). New tables
+  `external_platforms` (catalogue) + `employee_platforms` (join + note);
+  `routes/platforms.py` — `GET /area-dashboard?brand_id=`, catalogue CRUD
+  (`GET/POST /platforms`, `PATCH/DELETE /platforms/{id}`), and `PUT
+  /employees/{id}/platforms` (delete→flush→insert). Area Managers are scoped to
+  their own brand cluster (`_am_brands`/`_assert_can_edit_employee`); back-office
+  roles see all brands. Frontend `area_dashboard_screen.dart` + `models/platform.dart`.
+  No toggle (role-gated view, not a toggleable feature) (changelog 0088).
 
 ## Known bugs fixed (Aug 2026)
 - **Recurring "replace child rows" 500s.** A helper that *deletes all child rows
@@ -349,7 +361,7 @@ change was verified before commit — backend flows end-to-end against the runni
 API, frontend via `flutter analyze` + `flutter build web`, and the key flows
 (suspension live cut-off, forced password change, employee filters, IT store
 access, username/email login) confirmed in-browser. One changelog file per commit
-(standing rule #1); highest number = newest (currently **0060**).
+(standing rule #1); highest number = newest (currently **0088**).
 
 ## Next planned work
 - (No committed backlog.) Candidate follow-ups: hide/filter terminated staff from

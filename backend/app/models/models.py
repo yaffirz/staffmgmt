@@ -534,3 +534,39 @@ class Shifts(SQLModel, table=True):
     roster: str  # free text shift, e.g. "7-3pm" / "OFF" / "VACATION"
     created_by: Optional[int] = Field(default=None, foreign_key="users.user_id")
     updated_at: datetime = Field(default_factory=utcnow)
+
+
+class ExternalPlatforms(SQLModel, table=True):
+    """A 3rd-party platform/software the company uses (e.g. Taqtics, Oracle).
+    Shown as a coloured tag next to staff who have access."""
+
+    __tablename__ = "external_platforms"
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "name", name="uq_platform_tenant_name"),
+    )
+
+    platform_id: Optional[int] = Field(default=None, primary_key=True)
+    tenant_id: int = Field(default=1, index=True)
+    name: str
+    color: Optional[str] = Field(default=None)  # hex for the tag, optional
+    created_at: datetime = Field(default_factory=utcnow)
+
+
+class EmployeePlatforms(SQLModel, table=True):
+    """Which employees have access to which external platforms (+ optional note,
+    e.g. a username or access level)."""
+
+    __tablename__ = "employee_platforms"
+    __table_args__ = (
+        UniqueConstraint(
+            "employee_id", "platform_id", name="uq_employee_platform"
+        ),
+    )
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    tenant_id: int = Field(default=1, index=True)
+    employee_id: int = Field(foreign_key="employees.employee_id", index=True)
+    platform_id: int = Field(foreign_key="external_platforms.platform_id", index=True)
+    note: Optional[str] = Field(default=None)
+    created_by: Optional[int] = Field(default=None, foreign_key="users.user_id")
+    created_at: datetime = Field(default_factory=utcnow)

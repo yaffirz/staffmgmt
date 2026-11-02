@@ -23,6 +23,7 @@ from app.api.routes import (
     maintenance,
     marketing,
     non_oracle,
+    platforms,
     notes,
     notifications,
     preferences,
@@ -91,6 +92,7 @@ app.include_router(non_oracle.router)
 app.include_router(fingerprints.router)
 app.include_router(clock.router)
 app.include_router(attendance.router)
+app.include_router(platforms.router)
 
 
 @app.get("/health", tags=["meta"])
