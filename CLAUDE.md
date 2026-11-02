@@ -380,7 +380,7 @@ change was verified before commit — backend flows end-to-end against the runni
 API, frontend via `flutter analyze` + `flutter build web`, and the key flows
 (suspension live cut-off, forced password change, employee filters, IT store
 access, username/email login) confirmed in-browser. One changelog file per commit
-(standing rule #1); highest number = newest (currently **0090**).
+(standing rule #1); highest number = newest (currently **0091**).
 
 ## Next planned work
 - (No committed backlog.) Candidate follow-ups: hide/filter terminated staff from

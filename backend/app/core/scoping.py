@@ -26,6 +26,7 @@ from app.models.models import (
     AreaManagerStores,
     Employees,
     OpsManagerBrands,
+    StoreBrands,
     Stores,
 )
 from app.schemas.auth import CurrentUser
@@ -61,9 +62,12 @@ def am_manager(session: Session, user_id: int) -> Optional[AreaManagers]:
 def stores_in_brands(
     session: Session, tenant: int, brand_ids: set[int]
 ) -> set[int]:
+    """Store ids that SERVE any of these brands — a store's primary brand OR,
+    for a multi-brand foodmall, an extra brand it carries (`store_brands`). So a
+    foodmall flagged Rituals that also carries Pizza Boys counts for both."""
     if not brand_ids:
         return set()
-    return {
+    ids = {
         s.store_id
         for s in session.exec(
             select(Stores).where(
@@ -72,6 +76,26 @@ def stores_in_brands(
             )
         ).all()
     }
+    # Foodmall stores carrying one of these brands as an extra.
+    for sb in session.exec(
+        select(StoreBrands)
+        .join(Stores, Stores.store_id == StoreBrands.store_id)
+        .where(Stores.tenant_id == tenant, StoreBrands.brand_id.in_(brand_ids))
+    ).all():
+        ids.add(sb.store_id)
+    return ids
+
+
+def served_brand_ids(session: Session, store: Stores) -> set[int]:
+    """Every brand a store serves: its primary brand plus any foodmall extras."""
+    ids = {store.brand_id}
+    ids.update(
+        sb.brand_id
+        for sb in session.exec(
+            select(StoreBrands).where(StoreBrands.store_id == store.store_id)
+        ).all()
+    )
+    return ids
 
 
 def am_cluster_store_ids(

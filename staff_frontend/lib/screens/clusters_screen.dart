@@ -368,12 +368,19 @@ class _StorePickerDialogState extends State<_StorePickerDialog> {
 
   @override
   Widget build(BuildContext context) {
-    // Group stores by brand name.
+    // Group stores by brand name. A foodmall serves several brands, so it is
+    // listed under EACH brand it carries (same store_id — picking it in either
+    // group selects the one store).
     final q = _query.trim().toLowerCase();
     final byBrand = <String, List<ClusterStoreLite>>{};
     for (final s in widget.stores) {
       if (q.isNotEmpty && !s.storeName.toLowerCase().contains(q)) continue;
-      byBrand.putIfAbsent(s.brandName.isEmpty ? '—' : s.brandName, () => []).add(s);
+      final groups = s.brandNames.isNotEmpty
+          ? s.brandNames
+          : [s.brandName.isEmpty ? '—' : s.brandName];
+      for (final g in groups) {
+        byBrand.putIfAbsent(g.isEmpty ? '—' : g, () => []).add(s);
+      }
     }
     final brandNames = byBrand.keys.toList()..sort();
 

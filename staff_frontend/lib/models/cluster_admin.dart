@@ -16,19 +16,31 @@ class ClusterStoreLite {
   final String storeName;
   final int? brandId;
   final String brandName;
+  /// Every brand the store serves (primary + foodmall extras). A foodmall is
+  /// listed under each of these in the picker. Falls back to [brandName].
+  final List<String> brandNames;
   const ClusterStoreLite({
     required this.storeId,
     required this.storeName,
     this.brandId,
     this.brandName = '',
+    this.brandNames = const [],
   });
 
-  factory ClusterStoreLite.fromJson(Map<String, dynamic> j) => ClusterStoreLite(
-        storeId: j['store_id'] as int,
-        storeName: j['store_name'] as String,
-        brandId: j['brand_id'] as int?,
-        brandName: (j['brand_name'] as String?) ?? '',
-      );
+  factory ClusterStoreLite.fromJson(Map<String, dynamic> j) {
+    final primary = (j['brand_name'] as String?) ?? '';
+    final served = ((j['brand_names'] as List?) ?? const [])
+        .map((e) => e as String)
+        .where((e) => e.isNotEmpty)
+        .toList();
+    return ClusterStoreLite(
+      storeId: j['store_id'] as int,
+      storeName: j['store_name'] as String,
+      brandId: j['brand_id'] as int?,
+      brandName: primary,
+      brandNames: served.isNotEmpty ? served : (primary.isEmpty ? const [] : [primary]),
+    );
+  }
 }
 
 class AreaManagerRow {

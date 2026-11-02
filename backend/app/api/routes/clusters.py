@@ -14,6 +14,7 @@ from sqlmodel import Session, select
 
 from app.api.deps import require_roles
 from app.core.database import get_session
+from app.core.scoping import served_brand_ids
 from app.models.models import (
     AreaManagers,
     AreaManagerStores,
@@ -40,8 +41,11 @@ class BrandLite(BaseModel):
 class StoreLite(BaseModel):
     store_id: int
     store_name: str
-    brand_id: int | None = None
-    brand_name: str = ""
+    brand_id: int | None = None  # primary brand
+    brand_name: str = ""  # primary brand name
+    # Every brand the store serves (primary + foodmall extras). A foodmall is
+    # listed under each of these in the picker.
+    brand_names: list[str] = []
 
 
 class AreaManagerRow(BaseModel):
@@ -166,6 +170,13 @@ def overview(
                 store_name=s.store_name,
                 brand_id=s.brand_id,
                 brand_name=brand_name.get(s.brand_id, ""),
+                brand_names=sorted(
+                    {
+                        brand_name.get(bid, "")
+                        for bid in served_brand_ids(session, s)
+                        if brand_name.get(bid)
+                    }
+                ),
             )
             for s in stores
         ],

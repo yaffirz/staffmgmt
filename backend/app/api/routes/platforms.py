@@ -15,7 +15,7 @@ from sqlmodel import Session, select
 
 from app.api.deps import require_roles
 from app.core.database import get_session
-from app.core.scoping import dashboard_scope, effective_brand_id
+from app.core.scoping import dashboard_scope, effective_brand_id, stores_in_brands
 from app.models.models import (
     Brands,
     EmployeeAdditionalStores,
@@ -287,11 +287,15 @@ def area_dashboard(
 
     stores_out: list[DashStore] = []
     if selected is not None:
+        # Stores that SERVE the selected brand — a store's primary brand OR, for
+        # a multi-brand foodmall, an extra brand it carries. So a foodmall
+        # flagged Rituals that also carries Pizza Boys appears under both.
+        serving_ids = stores_in_brands(session, tenant, {selected.brand_id})
         stores = session.exec(
             select(Stores)
-            .where(Stores.tenant_id == tenant, Stores.brand_id == selected.brand_id)
+            .where(Stores.tenant_id == tenant, Stores.store_id.in_(serving_ids))
             .order_by(Stores.store_name)
-        ).all()
+        ).all() if serving_ids else []
         # Area Managers only see their own cluster's stores within the brand.
         if scope_stores is not None:
             stores = [s for s in stores if s.store_id in scope_stores]
