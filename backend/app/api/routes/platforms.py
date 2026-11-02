@@ -14,6 +14,7 @@ from pydantic import BaseModel
 from sqlmodel import Session, select
 
 from app.api.deps import require_roles
+from app.core.app_settings import get_bool
 from app.core.database import get_session
 from app.core.scoping import (
     am_cluster_store_ids,
@@ -24,12 +25,15 @@ from app.core.scoping import (
     stores_in_brands,
 )
 from app.models.models import (
+    AuditLogs,
     Brands,
     EmployeeAdditionalStores,
     EmployeePlatforms,
     Employees,
     ExternalPlatforms,
+    Notifications,
     Positions,
+    StaffStatusLog,
     Stores,
     UserRoles,
     Users,
@@ -48,6 +52,10 @@ MANAGE_ROLES = (
     "Ops Manager",
     "Area Manager",
 )
+
+# Toggle: may Ops/Area Managers move a staffer to the unemployed group
+# (terminate)? Admin roles always can. Default on.
+TERMINATE_TOGGLE = "managers_can_terminate"
 
 
 # ---------- schemas ----------
@@ -114,6 +122,8 @@ class Dashboard(BaseModel):
     stores: list[DashStore]
     platform_catalog: list[PlatformRead]
     can_edit: bool
+    # Whether the caller may move a staffer to the unemployed group (terminate).
+    can_unemploy: bool = False
     # Admin-only: the Area Managers an admin can view the dashboard "as".
     # Empty for Area/Ops Managers (they only ever see their own scope).
     area_managers: list[AmLite] = []
@@ -306,6 +316,76 @@ def set_employee_platforms(
     return _emp_platforms_map(session, [employee_id]).get(employee_id, [])
 
 
+# ---------- move to unemployed (terminate) ----------
+@router.post("/employees/{employee_id}/unemployed")
+def move_to_unemployed(
+    employee_id: int,
+    current: CurrentUser = Depends(require_roles(*MANAGE_ROLES)),
+    session: Session = Depends(get_session),
+):
+    """Move a staffer to the unemployed group (sets employment_status =
+    'terminated'), scoped to the caller's cluster. Mirrors the Status-Changes
+    termination: logs to staff_status_log, notifies IT, and audits. Ops/Area
+    Managers are gated by the `managers_can_terminate` toggle; admin roles always
+    may."""
+    emp = session.get(Employees, employee_id)
+    if emp is None or emp.tenant_id != current.tenant_id:
+        raise HTTPException(status_code=404, detail="Employee not found.")
+    _assert_can_edit_employee(session, current, emp)
+
+    if not is_admin_scope(current) and not get_bool(
+        session, current.tenant_id, TERMINATE_TOGGLE, True
+    ):
+        raise HTTPException(
+            status_code=403,
+            detail="Moving staff to unemployed is currently disabled by an "
+            "administrator.",
+        )
+    if emp.employment_status == "terminated":
+        raise HTTPException(
+            status_code=400, detail="This staff member is already unemployed."
+        )
+
+    emp.employment_status = "terminated"
+    session.add(emp)
+    session.commit()
+
+    session.add(
+        StaffStatusLog(
+            employee_id=emp.employee_id,
+            action_type="TERMINATION",
+            details={"reason": "Moved to unemployed group", "via": "area_dashboard"},
+            processed_by=current.user_id,
+        )
+    )
+    session.add(
+        Notifications(
+            tenant_id=current.tenant_id,
+            recipient_role="IT",
+            type="STAFF_TERMINATED",
+            payload={
+                "employee_id": emp.employee_id,
+                "employee_name": emp.employee_name,
+                "action": "TERMINATION",
+                "by_user_id": current.user_id,
+                "by_username": current.username,
+            },
+        )
+    )
+    session.add(
+        AuditLogs(
+            user_id=current.user_id,
+            action="UPDATE",
+            affected_table="employees",
+            record_id=str(emp.employee_id),
+            old_value={"employment_status": "active"},
+            new_value={"employment_status": "terminated", "via": "area_dashboard"},
+        )
+    )
+    session.commit()
+    return {"status": "terminated", "employee_id": emp.employee_id}
+
+
 # ---------- area dashboard ----------
 @router.get("/area-dashboard", response_model=Dashboard)
 def area_dashboard(
@@ -411,6 +491,7 @@ def area_dashboard(
         stores=stores_out,
         platform_catalog=catalog,
         can_edit=True,
+        can_unemploy=admin or get_bool(session, tenant, TERMINATE_TOGGLE, True),
         area_managers=area_managers,
         area_manager_id=viewing_am,
     )

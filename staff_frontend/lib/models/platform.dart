@@ -101,6 +101,7 @@ class AreaDashboard {
   final List<DashStore> stores;
   final List<Platform> platformCatalog;
   final bool canEdit;
+  final bool canUnemploy;
   final List<DashAreaManager> areaManagers;
   final int? areaManagerId;
   const AreaDashboard({
@@ -110,6 +111,7 @@ class AreaDashboard {
     this.stores = const [],
     this.platformCatalog = const [],
     this.canEdit = false,
+    this.canUnemploy = false,
     this.areaManagers = const [],
     this.areaManagerId,
   });
@@ -127,6 +129,7 @@ class AreaDashboard {
             .map((e) => Platform.fromJson(e as Map<String, dynamic>))
             .toList(),
         canEdit: (j['can_edit'] as bool?) ?? false,
+        canUnemploy: (j['can_unemploy'] as bool?) ?? false,
         areaManagers: ((j['area_managers'] as List?) ?? const [])
             .map((e) => DashAreaManager.fromJson(e as Map<String, dynamic>))
             .toList(),

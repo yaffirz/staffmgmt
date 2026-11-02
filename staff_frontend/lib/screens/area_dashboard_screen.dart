@@ -70,6 +70,42 @@ class _AreaDashboardScreenState extends State<AreaDashboardScreen> {
     if (mounted) _load(); // reflect catalog changes
   }
 
+  Future<void> _moveUnemployed(DashStaff staff) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Move to unemployed?'),
+        content: Text(
+            '${staff.employeeName} will be moved to the unemployed group and '
+            'removed from active rosters. This can be reversed from Status '
+            'Changes (reactivate).'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Move to unemployed'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    try {
+      await context.read<StaffService>().moveEmployeeUnemployed(staff.employeeId);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${staff.employeeName} moved to unemployed.')),
+      );
+      _load();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Failed: $e')));
+    }
+  }
+
   Future<void> _editPlatforms(DashStaff staff) async {
     final dash = _dash;
     if (dash == null) return;
@@ -359,6 +395,25 @@ class _AreaDashboardScreenState extends State<AreaDashboardScreen> {
               icon: const Icon(Icons.edit_outlined, size: 18),
               onPressed: () => _editPlatforms(s),
             ),
+            if (_dash?.canUnemploy ?? false)
+              PopupMenuButton<String>(
+                tooltip: 'More actions',
+                icon: const Icon(Icons.more_vert, size: 18),
+                onSelected: (v) {
+                  if (v == 'unemployed') _moveUnemployed(s);
+                },
+                itemBuilder: (_) => const [
+                  PopupMenuItem(
+                    value: 'unemployed',
+                    child: ListTile(
+                      dense: true,
+                      contentPadding: EdgeInsets.zero,
+                      leading: Icon(Icons.person_off_outlined),
+                      title: Text('Move to unemployed'),
+                    ),
+                  ),
+                ],
+              ),
           ],
         ),
       ),

@@ -404,6 +404,12 @@ class StaffService {
     return AreaDashboard.fromJson(data);
   }
 
+  /// Move a staffer to the unemployed group (terminate), scoped to the caller's
+  /// cluster.
+  Future<void> moveEmployeeUnemployed(int employeeId) async {
+    await _api.post('/api/v1/employees/$employeeId/unemployed', {});
+  }
+
   Future<List<Platform>> platforms() async {
     final data = await _api.get('/api/v1/platforms') as List;
     return data

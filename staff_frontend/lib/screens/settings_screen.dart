@@ -14,6 +14,7 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   static const _moveKey = 'area_managers_can_move';
+  static const _terminateKey = 'managers_can_terminate';
   static const _notesKey = 'staff_notes_enabled';
   static const _maintKey = 'maintenance_mode';
   static const _maintMsgKey = 'maintenance_message';
@@ -50,6 +51,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _loading = true;
   String? _error;
   bool _canMove = true;
+  bool _canTerminate = true;
   bool _notesEnabled = true;
   bool _saving = false;
 
@@ -124,6 +126,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         svc.getSetting(_columnCustomizersKey),
         svc.getSetting(_clockEnabledKey),
         svc.getSetting(_clockDevKey),
+        svc.getSetting(_terminateKey),
       ]);
       if (!mounted) return;
       final untilRaw = results[4];
@@ -146,6 +149,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _colCustCtrl.text = results[13];
         _clockEnabledOn = results[14].toLowerCase() != 'false';
         _clockDevOn = results[15].toLowerCase() == 'true';
+        _canTerminate = results[16].toLowerCase() != 'false';
         _loading = false;
       });
     } catch (_) {
@@ -190,6 +194,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
       );
     }
   }
+
+  Future<void> _setCanTerminate(bool value) => _setBoolSetting(
+        _terminateKey,
+        value,
+        (v) => _canTerminate = v,
+        (on) => on
+            ? 'Managers can now move staff to unemployed.'
+            : 'Managers can no longer move staff to unemployed.',
+      );
 
   Future<void> _setCanMove(bool value) => _setBoolSetting(
         _moveKey,
@@ -397,6 +410,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     'primary store from My Cluster.'),
                 value: _canMove,
                 onChanged: _saving ? null : _setCanMove,
+              )),
+              const SizedBox(height: 12),
+              _card(SwitchListTile(
+                title: const Text('Managers can move staff to unemployed'),
+                subtitle: const Text(
+                    'When off, Ops/Area Managers cannot move a staffer to the '
+                    'unemployed group from the Area Dashboard. '
+                    'Admins/IT/HR always can.'),
+                value: _canTerminate,
+                onChanged: _saving ? null : _setCanTerminate,
               )),
               const SizedBox(height: 24),
               _sectionTitle('Staff notes'),
