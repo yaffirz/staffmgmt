@@ -56,6 +56,8 @@ class _ClustersScreenState extends State<ClustersScreen> {
       child: AppScaffold(
         appBar: AppBar(
           title: const Text('Clusters'),
+          // Tab label colours come from the global TabBarTheme (white on the
+          // teal AppBar, readable in both light and dark).
           bottom: const TabBar(
             tabs: [
               Tab(text: 'Area Managers'),

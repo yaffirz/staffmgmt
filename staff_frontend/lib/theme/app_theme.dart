@@ -15,6 +15,19 @@ class AppColors {
 }
 
 class AppTheme {
+  // The AppBar (and the TabBar that sits in it) is the dark teal brand colour
+  // in BOTH light and dark themes, so tab labels must be light to stay legible.
+  // The Material-3 default tints tabs with onSurface, which is near-invisible on
+  // the teal bar — pin them to white here so every tabbed screen is readable.
+  static const _tabBarTheme = TabBarThemeData(
+    labelColor: Colors.white,
+    unselectedLabelColor: Colors.white70,
+    indicatorColor: Colors.white,
+    indicatorSize: TabBarIndicatorSize.tab,
+    labelStyle: TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+    unselectedLabelStyle: TextStyle(fontWeight: FontWeight.w500, fontSize: 15),
+  );
+
   static ThemeData light() {
     // copyWith (not fromSeed overrides) keeps this compatible with older
     // Flutter SDKs where fromSeed didn't accept primary/secondary.
@@ -36,6 +49,7 @@ class AppTheme {
         elevation: 0,
         centerTitle: false,
       ),
+      tabBarTheme: _tabBarTheme,
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
           backgroundColor: AppColors.ink,
@@ -84,6 +98,7 @@ class AppTheme {
         elevation: 0,
         centerTitle: false,
       ),
+      tabBarTheme: _tabBarTheme,
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
           backgroundColor: AppColors.amber,
